@@ -4,23 +4,6 @@
 # arg2: work directory
 # arg3: output directory
 
-# while true; do
-#     files=(${input-dir}/*.csv)
-#     if [ ${#files[@]} -gt 0 ];
-#     then 
-#         echo "File found!"
-#         echo "Transforming file "${files[0]}
-#         filename=$(basename "${files[0]}")
-#         transformedFileName=$(basename "${files[0]}" .csv)"-transformed.csv"
-#         echo "Transforming $filename ..."
-#         mv ${files[0]} ../transformed-inputs &&
-#         java -Xmx4g -jar transformation-csv3.jar ../transformed-inputs/$filename $transformedFileName
-#     else
-#         echo "Waiting for files..."
-#         sleep 5
-#     fi
-# done
-
 input_directory=${1}
 work_directory=${2}
 output_directory=${3}
@@ -36,44 +19,90 @@ echo '#'
 echo '#'
 echo '#'
 
+
 while true; do
+
+    new_file_to_process="no"
+    new_file_to_process="none"
+
     nfiles=`find ${input_directory} -name "*.zip" | wc -l`
     if [ "${nfiles}" -gt "0" ]; then
-
-        # Extract File Name
-        input_path=`find ${input_directory} -name "*.zip" | head -1`
+            
+        # Extract File Name in random pos
+        file_num=`shuf -i1-${nfiles} -n1`
+        input_path=`find ${input_directory} -name "*.zip" | head -${file_num} | tail -1`
         echo "// Found ${nfiles} Files"
-        echo "   Processing ${input_path}"
+        echo "// Picking file_num ${file_num}"
+        echo "// Processing ${input_path}"
 
         # Construct Paths
         file_name=${input_path##*/}
         file_name_no_ext=${file_name%.*}
         work_path=${work_directory}/${file_name}
         extract_directory=${work_directory}/${file_name_no_ext}
-
+        output_tmp_directory=${output_directory}/${file_name_no_ext}
+        
+        
         # Debug: Show Paths
         echo "!! file_name", ${file_name}
         echo "!! file_name_no_ext", ${file_name_no_ext}
         echo "!! work_path", ${work_path}
         echo "!! extract_directory", ${extract_directory}
         echo "!! output_directory", ${output_directory}
+        echo "!! output_tmp_directory", ${output_tmp_directory}
 
-        # Move Zip to Workspace
-        echo "   Moving Zip to Workspace"
-        mv ${input_path} ${work_directory}
+        # Aquire lock
+        input_path_no_ext=${input_path%.*}
+        lock_file="${input_path_no_ext}.lock"
+        exec 9>$lock_file
+        if flock -n 9; then
+            echo "// Aquired lock ${lock_file}"
+            
+            # Check if file already there
+            found_existing=`find ${work_directory} -name ${file_name} | wc -l`
+            if [ "${found_existing}" -eq "0" ]; then
+
+                # Check if valid zip file
+                ret_val=`unzip -t $input_path > /dev/null 2>&1`
+                if [ $? -eq 0 ]; then
+                    echo "!! Zip file ok"
+                
+                
+                    new_file_to_process="mv"
+                    # Move Zip to Workspace
+                    echo "   Moving Zip to Workspace"
+                    mv ${input_path} ${work_directory}
+                    new_file_to_process="yes"
+                else
+                    echo "// ZIP file error ... skipping operation"
+                fi
+            else
+                echo "// File ${file_name} already exists in working dir ... skipping operation"
+            fi
+        else
+            echo '// Lock failed ... skipping operation'
+        fi
+        # Release the lock
+        exec 9>-
+    fi
+
+    if [ $new_file_to_process == "yes" ]; then
+        # Files are now in the work dir ... ready to be processed
 
         # Extract Zip
         echo "   Extracting without folder structure"
         unzip -j ${work_path} -d ${extract_directory}
 
-        # Move Extracted Zip to Output
-        echo "   Moving To Output"
-        # mv ${extract_directory} ${output_directory}
-        mv ${extract_directory}/* ${output_directory}
-        echo 'a'
+        # Move Extracted Zip to Output tmp to assure complete operation before starting to consume
+        echo "   Moving From work To Output tmp"
+        mkdir ${output_tmp_directory}
+        mv ${extract_directory}/* ${output_tmp_directory}
 
+        echo "   Moving From Output tmp To Output"
+        # Move Extracted Zip from Output tmp to Output as atomic operation on same volume
+        mv ${output_tmp_directory}/* ${output_directory}
+        echo '   Done'
     else
-        # Wait
         echo '// Sleeping 60 Seconds'
         sleep 60
     fi
