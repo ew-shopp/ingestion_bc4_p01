@@ -10,7 +10,7 @@ echo ${lock_file}
 exec 9>$lock_file
 
 if flock -n 9; then
-    ping vg.no -c 10
+    ping vg.no -c 100
 fi
 exec 9>-
 
