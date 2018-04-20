@@ -3,14 +3,12 @@
 # arg1: input directory
 # arg2: work directory
 # arg3: output directory
-# arg4: js script name with full path
-# arg5: json transformation description name with full path
+# arg4: json transformation description name with full path
 
 input_directory=${1}
 work_directory=${2}
 output_directory=${3}
-script_js_full_path=${4}
-transformation_json_full_path=${5}
+transformation_json_full_path=${4}
 
 echo ${input_directory}
 echo ${work_directory}
