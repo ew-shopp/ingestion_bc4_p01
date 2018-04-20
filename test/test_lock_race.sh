@@ -18,7 +18,7 @@ while true; do
         echo "${COUNTER}"
         echo $COUNTER > $count_file
         echo $COUNTER >> $log_file
-        sleep 1
+        #sleep 1
         #echo "Bye"
     else
         echo "Never here"
