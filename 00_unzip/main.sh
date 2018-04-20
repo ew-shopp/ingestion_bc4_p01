@@ -18,12 +18,12 @@ ls -lisa /usr/bin/*zip
 echo '#'
 echo '#'
 echo '#'
+pwd
 
 
 while true; do
 
     new_file_to_process="no"
-    new_file_to_process="none"
 
     nfiles=`find ${input_directory} -name "*.zip" | wc -l`
     if [ "${nfiles}" -gt "0" ]; then
@@ -89,19 +89,8 @@ while true; do
     if [ $new_file_to_process == "yes" ]; then
         # Files are now in the work dir ... ready to be processed
 
-        # Extract Zip
-        echo "   Extracting without folder structure"
-        unzip -j ${work_path} -d ${extract_directory}
-
-        # Move Extracted Zip to Output tmp to assure complete operation before starting to consume
-        echo "   Moving From work To Output tmp"
-        mkdir ${output_tmp_directory}
-        mv ${extract_directory}/* ${output_tmp_directory}
-
-        echo "   Moving From Output tmp To Output"
-        # Move Extracted Zip from Output tmp to Output as atomic operation on same volume
-        mv ${output_tmp_directory}/* ${output_directory}
-        echo '   Done'
+        # Run the job as a subprocess passing all variables
+        source ./run_job.sh 
     else
         echo '// Sleeping 60 Seconds'
         sleep 60
