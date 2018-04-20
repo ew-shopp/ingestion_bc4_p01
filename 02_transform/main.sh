@@ -3,74 +3,89 @@
 # arg1: input directory
 # arg2: work directory
 # arg3: output directory
-
-# while true; do
-#     files=(${input-dir}/*.csv)
-#     if [ ${#files[@]} -gt 0 ];
-#     then 
-#         echo "File found!"
-#         echo "Transforming file "${files[0]}
-#         filename=$(basename "${files[0]}")
-#         transformedFileName=$(basename "${files[0]}" .csv)"-transformed.csv"
-#         echo "Transforming $filename ..."
-#         mv ${files[0]} ../transformed-inputs &&
-#         java -Xmx4g -jar transformation-csv3.jar ../transformed-inputs/$filename $transformedFileName
-#     else
-#         echo "Waiting for files..."
-#         sleep 5
-#     fi
-# done
+# arg4: transformation name with full path
 
 input_directory=${1}
 work_directory=${2}
 output_directory=${3}
+transformation_full_path=${4}
 
 echo ${input_directory}
 echo ${work_directory}
 echo ${output_directory}
+echo ${transformation_full_path}
 echo '***'
 
+echo '#'
+echo '#   Starting: Main'
+echo '#'
+
+lock_file="${input_directory}/dir_rw.lock"
+
 while true; do
-    nfiles=`find ${input_directory} -name "*.csv" | wc -l`
-    if [ "${nfiles}" -gt "0" ]; then
 
-        # Extract File Name
-        input_path=`find ${input_directory} -name "*.csv" | head -1`
-        echo "// Found ${nfiles} Files"
-        echo "   Processing ${input_path}"
+    new_file_to_process="no"
 
-        # Construct Paths
-        file_name=${input_path##*/}
-        file_name_no_ext=${file_name%.*}
-        work_path=${work_directory}/${file_name}
-        file_name_transformed="${file_name_no_ext}-transformed.csv"
-        work_path_transformed=${work_directory}/${file_name_transformed}
+    # Aquire lock
+    exec 9>$lock_file
+    # if flock -n 9; then   # No wait
+    echo "// Aquire lock ${lock_file}"
+    if flock 9; then
+        
+        # Check if there are files to process
+        nfiles=`find ${input_directory} -name "*.csv" | wc -l`
+        if [ "${nfiles}" -gt "0" ]; then
+                
+            # Extract File Name in random pos
+            file_num=`shuf -i1-${nfiles} -n1`
+            input_path=`find ${input_directory} -name "*.csv" | head -${file_num} | tail -1`
+            echo "// Found ${nfiles} Files"
+            echo "// Picking file_num ${file_num}"
+            echo "// Processing ${input_path}"
 
-        # Debug: Show Paths
-        echo "!! file_name", ${file_name}
-        echo "!! file_name_no_ext", ${file_name_no_ext}
-        echo "!! file_name_rdf", ${file_name_rdf}
-        echo "!! work_path", ${work_path}
-        echo "!! work_path_transformed", ${work_path_transformed}
-        echo "!! output_directory", ${output_directory}
+            # Construct Paths
+            file_name=${input_path##*/}
+            file_name_no_ext=${file_name%.*}
+            work_path=${work_directory}/${file_name}
+            file_name_transformed="${file_name_no_ext}-transformed.csv"
+            work_path_transformed=${work_directory}/${file_name_transformed}
 
-        # Move to Workspace
-        echo "   Moving to Workspace"
-        mv ${input_path} ${work_directory}
+            # Debug: Show Paths
+            echo "!! file_name", ${file_name}
+            echo "!! file_name_no_ext", ${file_name_no_ext}
+            echo "!! work_path", ${work_path}
+            echo "!! work_path_transformed", ${work_path_transformed}
+            echo "!! output_directory", ${output_directory}
+            echo "!! transformation_full_path", ${transformation_full_path}
+                
+            # Check if file already there
+            found_existing=`find ${work_directory} -name ${file_name} | wc -l`
+            if [ "${found_existing}" -eq "0" ]; then
 
-        # Transforming
-        echo "   Transforming"
-        java -Xmx4g -jar /code/transformation-csv3.jar \
-            ${work_path} \
-            ${work_path_transformed}
-
-        # Move Extracted Zip to Output
-        echo "   Moving To Output"
-        mv ${work_path_transformed} ${output_directory}
-
+                # Move to Workspace
+                echo "   Moving to Workspace"
+                mv ${input_path} ${work_directory}
+                new_file_to_process="yes"
+                
+            else
+                echo "// File ${file_name} already exists in working dir ... skipping operation"
+            fi
+        fi
     else
-        # Wait
+        echo '// Lock failed ... skipping operation'
+    fi
+    # Release the lock
+    exec 9>-
+
+
+    if [ $new_file_to_process == "yes" ]; then
+        # Files are now in the work dir ... ready to be processed
+
+        # Run the job as a subprocess passing all variables
+        source ./run_job.sh 
+    else
         echo '// Sleeping 60 Seconds'
         sleep 60
     fi
 done
+

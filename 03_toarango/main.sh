@@ -3,72 +3,91 @@
 # arg1: input directory
 # arg2: work directory
 # arg3: output directory
+# arg4: js script name with full path
+# arg5: json transformation description name with full path
 
 input_directory=${1}
 work_directory=${2}
 output_directory=${3}
+script_js_full_path=${4}
+transformation_json_full_path=${5}
 
 echo ${input_directory}
 echo ${work_directory}
 echo ${output_directory}
+echo ${transformation_json_full_path}
 echo '***'
 
-ls -lisa /code/Datagraft-RDF-to-Arango-DB
-
-echo '***'
-
-ls -lisa /in/
-
-echo ''
 echo '#'
+echo '#   Starting: Main'
 echo '#'
-echo '#'
-echo ''
+
+lock_file="${input_directory}/dir_rw.lock"
 
 while true; do
-    nfiles=`find ${input_directory} -name "*.csv" | wc -l`
-    if [ "${nfiles}" -gt "0" ]; then
 
-        # Extract File Name
-        input_path=`find ${input_directory} -name "*.csv" | head -1`
-        echo "// Found ${nfiles} Files"
-        echo "   Processing ${input_path}"
+    new_file_to_process="no"
 
-        # Construct Paths
-        file_name=${input_path##*/}
-        file_name_no_ext=${file_name%.*}
-        work_path=${work_directory}/${file_name}
-        file_name_transformed="${file_name_no_ext}-transformed.csv"
-        work_path_results=${work_directory}/results
+    # Aquire lock
+    exec 9>$lock_file
+    # if flock -n 9; then   # No wait
+    echo "// Aquire lock ${lock_file}"
+    if flock 9; then
+        
+        # Check if there are files to process
+        nfiles=`find ${input_directory} -name "*.csv" | wc -l`
+        if [ "${nfiles}" -gt "0" ]; then
+                
+            # Extract File Name in random pos
+            file_num=`shuf -i1-${nfiles} -n1`
+            input_path=`find ${input_directory} -name "*.csv" | head -${file_num} | tail -1`
+            echo "// Found ${nfiles} Files"
+            echo "// Picking file_num ${file_num}"
+            echo "// Processing ${input_path}"
 
-        # Debug: Show Paths
-        echo "!! file_name", ${file_name}
-        echo "!! file_name_no_ext", ${file_name_no_ext}
-        echo "!! file_name_rdf", ${file_name_rdf}
-        echo "!! work_path", ${work_path}
-        echo "!! work_path_results", ${work_path_results}
-        echo "!! output_directory", ${output_directory}
+            # Construct Paths
+            file_name=${input_path##*/}
+            file_name_no_ext=${file_name%.*}
+            work_path=${work_directory}/${file_name}
+            work_path_results=${work_directory}/results
 
-        # Move to Workspace
-        echo "   Moving to Workspace, Making Results Directory"
-        mv ${input_path} ${work_directory}
-        mkdir -p ${work_path_results}
+            # Debug: Show Paths
+            echo "!! file_name", ${file_name}
+            echo "!! file_name_no_ext", ${file_name_no_ext}
+            echo "!! work_path", ${work_path}
+            echo "!! work_path_results", ${work_path_results}
+            echo "!! output_directory", ${output_directory}
+                
+            # Check if file already there
+            found_existing=`find ${work_directory} -name ${file_name} | wc -l`
+            if [ "${found_existing}" -eq "0" ]; then
 
-        # Transforming
-        echo "   Transforming to Arango Graph"
-        cd ${work_directory}
-        node \
-            /code/Datagraft-RDF-to-Arango-DB/transformscript.js \
-            -t /code/transformation-new.json \
-            -f ${work_path}
-
-        # Move Results to Output
-        echo "   Moving To Output"
-        mv ${work_path_results}/* ${output_directory}
-
+                # Move to Workspace
+                echo "   Moving to Workspace, Making Results Directory"
+                mv ${input_path} ${work_directory}
+                mkdir -p ${work_path_results}
+                new_file_to_process="yes"
+                
+            else
+                echo "// File ${file_name} already exists in working dir ... skipping operation"
+            fi
+        fi
     else
-        # Wait
+        echo '// Lock failed ... skipping operation'
+    fi
+    # Release the lock
+    exec 9>-
+
+
+    if [ $new_file_to_process == "yes" ]; then
+        # Files are now in the work dir ... ready to be processed
+
+        # Run the job as a subprocess passing all variables
+        source ./run_job.sh 
+    else
         echo '// Sleeping 60 Seconds'
         sleep 60
     fi
 done
+
+
