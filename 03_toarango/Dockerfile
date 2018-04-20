@@ -9,6 +9,5 @@ RUN mkdir /code && \
     cd Datagraft-RDF-to-Arango-DB && \
     npm install
 ADD main.sh /code/main.sh
-ADD transformation-new.json /code/transformation-new.json
 
 ENTRYPOINT ["/code/main.sh"]
