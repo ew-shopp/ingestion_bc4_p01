@@ -14,7 +14,7 @@ echo "   Converting TSV > CSV"
 tr '\t' , < ${work_path} > ${work_path_csv}
 
 # Run move_to_output as a subprocess passing all variables
-source ./move_to_output.sh
+source /code/move_to_output.sh
 
 echo '   Done'
 

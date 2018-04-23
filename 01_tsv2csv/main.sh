@@ -55,11 +55,16 @@ while true; do
             echo "!! output_directory", ${output_directory}
                 
             # Check if file already there
+            ls -l ${input_directory}
+            ls -l ${work_directory}
             found_existing=`find ${work_directory} -name ${file_name} | wc -l`
+            echo $found_existing
             if [ "${found_existing}" -eq "0" ]; then
 
                 # Move to Workspace
                 echo "   Moving to Workspace"
+                echo ${input_path}
+                echo ${work_directory}
                 mv ${input_path} ${work_directory}
                 new_file_to_process="yes"
             else
@@ -70,14 +75,14 @@ while true; do
         echo '// Lock failed ... skipping operation'
     fi
     # Release the lock
-    exec 9>-
+    exec 9>&-
 
 
     if [ $new_file_to_process == "yes" ]; then
         # Files are now in the work dir ... ready to be processed
 
         # Run the job as a subprocess passing all variables
-        source ./run_job.sh 
+        source /code/run_job.sh 
     else
         echo '// Sleeping 60 Seconds'
         sleep 60
