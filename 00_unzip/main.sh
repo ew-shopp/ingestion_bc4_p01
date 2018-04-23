@@ -79,7 +79,14 @@ while true; do
         echo '// Lock failed ... skipping operation'
     fi
     # Release the lock
+    id -u sintef
+    groups
+    echo $UID
+    ls -l $lock_file
     exec 9>-
+    ls -l $lock_file
+    pwd
+    ll
 
 
     if [ $new_file_to_process == "yes" ]; then
