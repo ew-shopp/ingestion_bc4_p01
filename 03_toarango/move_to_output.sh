@@ -19,7 +19,7 @@ if flock 9; then
       
     # Move to Output, the lock will assure complete operation before starting to consume
     echo "   Moving From work To Output"
-    mv ${work_path_results}/* ${output_directory}
+    mv ${work_path_results}/${file_name_no_ext}* ${output_directory}
 
 fi
 # Release the lock
