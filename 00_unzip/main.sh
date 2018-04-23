@@ -56,10 +56,10 @@ while true; do
             echo "!! output_directory", ${output_directory}
                 
             # Check if file already there
+            ls -l ${input_directory}
             ls -l ${work_directory}
-            find ${work_directory} -name ${file_name}
             found_existing=`find ${work_directory} -name ${file_name} | wc -l`
-            $found_existing
+            echo $found_existing
             if [ "${found_existing}" -eq "0" ]; then
 
                 # Check if valid zip file
@@ -69,6 +69,8 @@ while true; do
                 
                     # Move Zip to Workspace
                     echo "   Moving Zip to Workspace"
+                    echo ${input_path}
+                    echo ${work_directory}
                     mv ${input_path} ${work_directory}
                     new_file_to_process="yes"
                 else
