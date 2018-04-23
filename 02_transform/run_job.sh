@@ -18,6 +18,8 @@ java -Xmx4g -jar ${transformation_full_path} \
     ${work_path_transformed}
 
 
+ls -l $work_directory
+
 # Run move_to_output as a subprocess passing all variables
 source /code/move_to_output.sh
 
