@@ -23,5 +23,5 @@ if flock 9; then
 
 fi
 # Release the lock
-exec 9>-
+exec 9>&-
 

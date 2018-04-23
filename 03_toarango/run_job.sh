@@ -17,9 +17,11 @@ node \
     -t ${transformation_json_full_path} \
     -f ${work_path}
 
+ls -l ${work_directory}
+ls -l ${work_path_results}
 
 # Run move_to_output as a subprocess passing all variables
-source ./move_to_output.sh
+source /code/move_to_output.sh
 
 echo '   Done'
 
