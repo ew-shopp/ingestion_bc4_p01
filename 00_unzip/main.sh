@@ -79,21 +79,19 @@ while true; do
         echo '// Lock failed ... skipping operation'
     fi
     # Release the lock
-    id -u sintef
-    groups
     echo $UID
     ls -l $lock_file
-    exec 9>-
+    exec 9>&-
     ls -l $lock_file
     pwd
-    ll
+    ls -l /code
 
 
     if [ $new_file_to_process == "yes" ]; then
         # Files are now in the work dir ... ready to be processed
 
         # Run the job as a subprocess passing all variables
-        source ./run_job.sh 
+        source /code/run_job.sh 
     else
         echo '// Sleeping 60 Seconds'
         sleep 60
