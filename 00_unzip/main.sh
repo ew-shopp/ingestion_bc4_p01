@@ -56,7 +56,10 @@ while true; do
             echo "!! output_directory", ${output_directory}
                 
             # Check if file already there
+            ls -l ${work_directory}
+            find ${work_directory} -name ${file_name}
             found_existing=`find ${work_directory} -name ${file_name} | wc -l`
+            $found_existing
             if [ "${found_existing}" -eq "0" ]; then
 
                 # Check if valid zip file
@@ -79,12 +82,7 @@ while true; do
         echo '// Lock failed ... skipping operation'
     fi
     # Release the lock
-    echo $UID
-    ls -l $lock_file
     exec 9>&-
-    ls -l $lock_file
-    pwd
-    ls -l /code
 
 
     if [ $new_file_to_process == "yes" ]; then
