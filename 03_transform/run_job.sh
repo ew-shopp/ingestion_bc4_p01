@@ -13,7 +13,7 @@ echo "!! work_path_transformed", ${work_path_transformed}
 # Transforming
 echo "   Transforming"
 # java -Xmx4g -jar /code/transformation-csv3.jar \
-java -Xmx8g -jar ${transformation_full_path} \
+java -Xmx4g -jar ${transformation_full_path} \
     ${work_path} \
     ${work_path_transformed}
 

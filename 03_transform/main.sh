@@ -47,7 +47,7 @@ while true; do
             file_name=${input_path##*/}
             file_name_no_ext=${file_name%.*}
             work_path=${work_directory}/${file_name}
-            file_name_transformed="${file_name_no_ext}-transformed.csv"
+            file_name_transformed="${file_name_no_ext}-tr.csv"
             work_path_transformed=${work_directory}/${file_name_transformed}
 
             # Debug: Show Paths
