@@ -9,8 +9,7 @@ exec 9>$lock_file
 echo "Aquiring lock"
 if flock -n 9; then
     echo "Starting move"
-    mkdir move
-    mv *.csv move/
+    mv *.csv $1
 fi
 exec 9>&-
 
