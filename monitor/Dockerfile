@@ -1,7 +1,12 @@
-FROM tiangolo/uwsgi-nginx-flask:python3.6
+FROM python:2
+WORKDIR /usr/src/app
 
-ENV STATIC_INDEX 1
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
+COPY . .
 COPY ./app /app
+
+CMD [ "python", "app/main.py" ]
 
 
