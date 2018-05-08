@@ -3,6 +3,6 @@
 entry={\"entry\":\"$1\"} 
 echo $entry
 curl -H "Content-type: application/json" \
-     -X POST http://localhost:8080/log -d "$entry"
+     -X POST http://10.0.8.3:8080/log -d "$entry"
      
      
