@@ -1,8 +1,8 @@
 #!/bin/bash
 
-entry={\"entry\":\"$1\"} 
-echo $entry
+url=http://"$1":8080
+entry={\"entry\":\"$2\"} 
 curl -H "Content-type: application/json" \
-     -X POST http://10.0.8.3:8080/log -d "$entry"
+     -X POST $url/log -d "$entry"
      
      
