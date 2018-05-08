@@ -18,5 +18,5 @@ def api_log():
 
     
 if __name__ == '__main__':
-    app.run()
+    app.run(port=int("8080"))
         
