@@ -2,6 +2,7 @@ FROM alpine:3.6
 
 RUN apk update
 RUN apk add bash
+RUN apk add docker
 
 ADD supervisor_sigterm.sh /code/supervisor_sigterm.sh
 ADD main.sh /code/main.sh
