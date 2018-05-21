@@ -83,9 +83,9 @@ while [ -f $tmp_file ]; do
                 echo ${input_path_value}
                 echo ${input_path_value_renamed}
                 echo ${input_path_edge}
-                echo ${input_path_value_edge}
+                echo ${input_path_edge_renamed}
                 mv ${input_path_value} ${input_path_value_renamed}
-                mv ${input_path_edge} ${input_path_value_edge}
+                mv ${input_path_edge} ${input_path_edge_renamed}
                 new_file_to_process="yes"
 
             else

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo '#'
-echo '#  Starting Job: Upload to Arango'
+echo '#  Starting Job: Upload to Arango pair'
 echo '#'
 # Debug: Show Paths
 echo "!! work_path_value", ${work_path_value}
@@ -23,8 +23,8 @@ echo "   Uploading value collection"
 
 echo "   Executing: docker cp ${work_path_value} ${container_id}:./" 
 docker cp ${work_path_value} ${container_id}:./  &&
-docker exec -i ${container_id} arangoimp --server.password --file ${filename_value} --collection ${collection_value} --log.level fatal --threads 6 --batch-size 32768 &&
-docker exec ${container_id} rm ${filename_value}  &&
+docker exec -i ${container_id} arangoimp --server.password --file ${file_name_value} --collection ${collection_value} --log.level fatal --threads 6 --batch-size 32768 &&
+docker exec ${container_id} rm ${file_name_value}  &&
 
 mv ${work_path_value} ${work_directory}/imported &&
 
@@ -33,8 +33,8 @@ sleep 5 &&
 echo "   Uploading edge collection" &&
 echo "   Executing: docker cp ${work_path_edge} ${container_id}:./" 
 docker cp ${work_path_edge} ${container_id}:./  &&
-docker exec -i ${container_id} arangoimp --server.password --file ${filename_edge} --collection ${collection_edge} --from-collection-prefix ${collection_value} --to-collection-prefix ${collection_value} --log.level fatal --threads 6 --batch-size 32768 &&
-docker exec ${container_id} rm ${filename_edge}  &&
+docker exec -i ${container_id} arangoimp --server.password --file ${file_name_edge} --collection ${collection_edge} --from-collection-prefix ${collection_value} --to-collection-prefix ${collection_value} --log.level fatal --threads 6 --batch-size 32768 &&
+docker exec ${container_id} rm ${file_name_edge}  &&
 
 mv ${work_path_edge} ${work_directory}/imported &&
 
