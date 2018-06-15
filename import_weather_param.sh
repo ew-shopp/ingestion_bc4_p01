@@ -1,7 +1,15 @@
 containerID=$1
-collectionName="weather-2017-germany-jot-combined"
-importFolder="/bigdata/steffen/weatherdata/to_arango/combined"
+#collectionName="weather-2017-germany-jot-combined"
+collectionName=$2
+#importFolder="/bigdata/steffen/weatherdata/to_arango/combined"
+importFolder=$3
+
+echo "ContinerId $containerID"
+echo "Collection name $collectionName"
+echo "Import folder $importFolder"
 pwd
+read -p "Press any key to start ..."
+
 while true
 do
 	files=(*.json)
