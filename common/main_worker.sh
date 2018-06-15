@@ -28,12 +28,8 @@ echo '#'
 lock_file="${input_directory}/dir_rw.lock"
 
 while [ -f $tmp_file ]; do
-    new_file_to_process="no"
 
-    # What files to look for ?
-    input_file_spec=$(${code_directory}/get_input_file_spec.sh)
-    
     # Call script to find a file and process it 
-    ${code_directory}/fetch_one_and_process.sh "${input_file_spec}" "${code_directory}/process_job.sh" "$@"
+    ${code_directory}/fetch_one_and_process.sh "${code_directory}/process_job.sh" "$@"
 done
 

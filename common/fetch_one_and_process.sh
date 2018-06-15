@@ -1,23 +1,20 @@
 #!/bin/bash
-# arg1: input file spec              
-# arg2: process_job              
-# arg3: code directory
-# arg4: input directory
-# arg5: work directory
+# arg1: process_job              
+# arg2: code directory
+# arg3: input directory
+# arg4: work directory
 # arg6: output directory
 # arg7 ... : application params
 
-input_file_spec=${1}
-process_job=${2}
-code_directory=${3}
-input_directory=${4}
-work_directory=${5}
-output_directory=${6}
+process_job=${1}
+code_directory=${2}
+input_directory=${3}
+work_directory=${4}
+output_directory=${5}
 
-# Remove two first argument to make it easy to pass the remaining params
-shift 2
+# Remove first argument to make it easy to pass the remaining params
+shift 
 
-echo ${input_file_spec}
 echo ${process_job}
 echo ${code_directory}
 echo ${input_directory}
@@ -28,6 +25,11 @@ echo '***'
 echo '#'
 echo '#   Starting: fetch_one_and_process'
 echo '#'
+
+# What files to look for ?
+input_file_spec=$(${code_directory}/get_input_file_spec.sh)
+
+echo "Searching fil filepattern: ${input_file_spec}"
 
 
 lock_file="${input_directory}/dir_rw.lock"
@@ -40,11 +42,11 @@ exec 9>$lock_file
 if flock 9; then   # Blocking wait
     
     # Check if there are files to process
-    nfiles=`find ${input_directory} -name ${input_file_spec} | wc -l`
+    nfiles=`find "${input_directory}" -name "${input_file_spec}" | wc -l`
     if [ "${nfiles}" -gt "0" ]; then
         # Extract File Name in random pos
         file_num=`shuf -i1-${nfiles} -n1`
-        input_path=`find ${input_directory} -name ${input_file_spec} | head -${file_num} | tail -1`
+        input_path=`find "${input_directory}" -name "${input_file_spec}" | head -${file_num} | tail -1`
         echo "// Found ${nfiles} Files"
         echo "// Picking file_num ${file_num}"
         echo "// File to process ${input_path}"
@@ -64,7 +66,7 @@ if flock 9; then   # Blocking wait
             # Check if file already there
             #ls -l ${input_directory}
             #ls -l ${work_directory}
-            found_existing=`find ${work_directory} -name ${file_name} | wc -l`
+            found_existing=`find "${work_directory}" -name "${file_name}" | wc -l`
             echo $found_existing
             if [ "${found_existing}" -eq "0" ]; then
 
