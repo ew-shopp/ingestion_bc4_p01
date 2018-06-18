@@ -97,9 +97,9 @@ if [ $new_file_to_process == "yes" ]; then
 
     # Run the job 
     ${process_job} "${work_path}" "$@"
+    exit 0
 else
-    echo '// Sleeping 60 Seconds'
-    sleep 60
+    exit 1
 fi
 
 

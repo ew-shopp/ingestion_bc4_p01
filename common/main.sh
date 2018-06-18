@@ -6,16 +6,18 @@ function gracefulshutdown {
     rm $run_file_name
 }
 
-# arg1: code directory
-# arg2: input directory
-# arg3: work directory
-# arg4: output directory
-# arg5... : application params
+# arg1: retry_max_count
+# arg2: code directory
+# arg3: input directory
+# arg4: work directory
+# arg5: output directory
+# arg6... : application params
 
-code_directory=${1}
-input_directory=${2}
-work_directory=${3}
-output_directory=${4}
+retry_max_count=${1}
+code_directory=${2}
+input_directory=${3}
+work_directory=${4}
+output_directory=${5}
 
 
 # Worker script to run
