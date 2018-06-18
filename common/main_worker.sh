@@ -15,9 +15,9 @@ output_directory=${5}
 # Remove first argument to make it easy to pass the remaining params
 shift
 
-echo ${tmp_file}
-echo ${code_directory}
-echo ${input_directory}
+echo "tmp_file: ${tmp_file}"
+echo "code_directory: ${code_directory}"
+echo "input_directory: ${input_directory}"
 echo '***'
 
 echo '#'
@@ -27,9 +27,14 @@ echo '#'
 
 lock_file="${input_directory}/dir_rw.lock"
 
+# What files to look for ?
+echo "Fetching file pattern from: ${code_directory}/get_input_file_spec.sh"
+input_file_spec=$(${code_directory}/get_input_file_spec.sh)
+echo "Got filepattern: ${input_file_spec} from "
+
 while [ -f $tmp_file ]; do
 
     # Call script to find a file and process it 
-    ${code_directory}/fetch_one_and_process.sh "${code_directory}/process_job.sh" "$@"
+    "${code_directory}/fetch_one_and_process.sh" "${input_file_spec}" "${code_directory}/process_job.sh" "$@"
 done
 

@@ -12,11 +12,11 @@ input_directory=${3}
 work_directory=${4}
 output_directory=${5}
 
-echo ${work_path}
-echo ${code_directory}
-#echo ${input_directory}
-echo ${work_directory}
-echo ${output_directory}
+echo "work_path: ${work_path}"
+echo "code_directory: ${code_directory}"
+#echo "input_directory: ${input_directory}"
+echo "work_directory: ${work_directory}"
+echo "output_directory: ${output_directory}"
 echo '***'
 
 echo '#'
@@ -30,7 +30,7 @@ extract_directory=${work_directory}/${file_name_no_ext}
 
 
 # Debug: Show Paths
-echo "!! work_path", ${work_path}
+#echo "!! work_path", ${work_path}
 echo "!! extract_directory", ${extract_directory}
 
 # File is in the work dir ... ready to be processed

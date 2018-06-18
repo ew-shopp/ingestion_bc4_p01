@@ -7,8 +7,8 @@ output_directory=${1}
 # Remove the first argument to make it easy to loop through files
 shift
 
-echo ${output_directory}
-echo $@
+echo "output_directory: ${output_directory}"
+#echo $@
 echo '***'
 
 echo '#'
@@ -27,7 +27,7 @@ do
     to_file_path_renamed=${to_file_path}.outmove
     shift
     
-    echo "   Moving file ${from_file_path} to output as renamed file"
+    echo "   Moving file ${from_file_path} to ${to_file_path_renamed}"
     mv ${from_file_path} ${to_file_path_renamed}
     
     # Aquire lock
@@ -36,7 +36,7 @@ do
     if flock 9; then   # Blocking wait
           
         # Rename file in output dir to assure complete operation before starting to consume
-        echo "   Rename file in output dir"
+        echo "   Rename file in output dir ${to_file_path_renamed} ${to_file_path}"
         mv ${to_file_path_renamed} ${to_file_path}
 
     fi

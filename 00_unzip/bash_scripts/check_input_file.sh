@@ -3,14 +3,14 @@
 
 input_path=${1}
 
-echo ${input_path}
+echo "input_path: ${input_path}"
 echo '***'
 
 echo '#'
 echo '#  Starting : check_input_file'
 echo '#'
 
-ret_val=`unzip -t $input_path > /dev/null 2>&1`
+unzip -t "$input_path" > /dev/null 2>&1
 
 if [ $? -eq 0 ]; then
     exit 0
