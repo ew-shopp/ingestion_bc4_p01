@@ -25,7 +25,7 @@ echo "Main - Starting"
 
 # Make tmp file ... run until file is deleted
 mkdir -p $work_directory/run
-run_file_name=`mktemp --tmpdir=$work_directory/run/ --suffix=.run`
+run_file_name=`mktemp -t -p ${work_directory}/run`
 
 trap gracefulshutdown SIGINT SIGTERM
 
