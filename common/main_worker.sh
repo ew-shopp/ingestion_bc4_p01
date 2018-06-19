@@ -35,7 +35,7 @@ wait_count=0
 # What files to look for ?
 echo "Fetching file pattern from: ${code_directory}/get_input_file_spec.sh"
 input_file_spec=$(${code_directory}/get_input_file_spec.sh)
-echo "Got filepattern: ${input_file_spec} from "
+echo "Got filepattern: ${input_file_spec}"
 
 while [ -f $run_file_name ]; do
 
