@@ -36,23 +36,61 @@ app.config['DEBUG'] = True
 #turn the flask app into a socketio app
 socketio = SocketIO(app)
 
+class Service():
+    def __init__(self, name):
+        self._name = name
+        self._updates = 0
+        self._msgs = []
+
+    def post(self, msgDict):
+        self._updates += 1
+        self._msgs.append(msgDict)
+        #print "updates: %d" % (self.updates)
+        print "msgDict: %s" % (msgDict)
+        
+    def getContent(self):
+        contentHtml = ""
+        contentHtml += "<table>"
+        contentHtml += "<tr><th>%s</th></tr>" % self._name
+        contentHtml += "<tr><th>Date</th><th>entry</th></tr>"
+        
+        i1 = 0
+        i2 = len(self._msgs)
+        if i2 > 4:
+            i1 = i2 - 5
+            
+        for i in range(i1, i2):
+            msg = self._msgs[i]
+            contentHtml += "<tr><td>%s</td><td>%s</td></tr>" % (msg.get('date'), msg.get('entry'))
+            
+        contentHtml += "</table>"
+        return contentHtml
+
 class StateMonitor():
     def __init__(self):
-        self.updates = 0
-        self.msgs = []
+        self._services = {}
         
     def post(self, msgDict):
-        self.updates += 1
-        print "updates: %d" % (self.updates)
-        print "msgDict: %s" % (msgDict)
-        self.msgs.append(msgDict)
+        name = msgDict.get('host')
+        if not self._services.has_key(name):
+            service = Service(name)
+            self._services[name] = service
+        else:
+            service = self._services[name]
+            
+        service.post(msgDict)
+        self.updatePage()
+            
+
+    def updatePage(self):        
         sectionHtml = ""
-        sectionHtml += "<table>"
-        sectionHtml += "<tr><th>Date</th><th>Host</th><th>entry</th></tr>"
-        for msg in self.msgs:
-            sectionHtml += "<tr><td>%s</td><td>%s</td><td>%s</td></tr>" % (msg.get('date'), msg.get('host'), msg.get('entry'))
-        sectionHtml += "</table>"
-        print sectionHtml
+        sectionHtml += "<table><tr>"
+        for key in self._services:
+            sectionHtml += "<td>"
+            sectionHtml += self._services[key].getContent()
+            sectionHtml += "</td>"
+        sectionHtml += "</tr></table>"
+        
         socketio.emit('dynsection', {'dynsection': sectionHtml}, namespace='/test')
        
 stateMonitor = StateMonitor()
