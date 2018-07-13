@@ -25,6 +25,12 @@ cmd_to_run="${code_directory}/main_worker.sh"
 
 echo "Main - Starting"
 
+# Execute init if present
+init_script="${code_directory}/init.sh"
+if [ -f "$init_script" ]; then
+   $init_script
+fi
+
 # Make tmp file ... run until file is deleted
 mkdir -p $work_directory/run
 run_file_name=`mktemp -t -p ${work_directory}/run`
