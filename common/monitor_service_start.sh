@@ -5,7 +5,8 @@ if [ "${MONITOR_JOBS}" = "1" ]; then
 
     ### Create the id file for the service
     hostname="$(hostname)"
-    date="$(date '+%Y%m%d_%T_%N')"
+    #date="$(date '+%Y%m%d_%T_%N')"
+    date="$(date '+%s')"
     hostid="${hostname}_${date}"
     type='???'
     # Fetch type if present
