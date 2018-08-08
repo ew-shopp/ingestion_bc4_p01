@@ -48,6 +48,12 @@ if flock 9; then   # Blocking wait
         echo "// Picking file_num ${file_num}"
         echo "// File to process ${input_path}"
 
+        # Create new monitor session
+        session_id_file_name="${run_file_name}.sessionid"
+        export SESSION_ID_FILE_NAME=$session_id_file_name
+        ${CODE_DIRECTORY}/monitor_session_start.sh
+        ${CODE_DIRECTORY}/monitor_session_file.sh "infile" ${input_path}
+
         # Construct Paths
         file_name=${input_path##*/}
         input_path_renamed=${input_path}.inmove
@@ -69,20 +75,24 @@ if flock 9; then   # Blocking wait
 
                 # Move to Workspace
                 echo "   Renaming file ${input_path} ${input_path_renamed}"
+                ${CODE_DIRECTORY}/monitor_session_event_n_l_fn_fs.sh "renaming file" "mv ${input_path} ${input_path_renamed}"
                 mv ${input_path} ${input_path_renamed}
                 new_file_to_process="yes"
 
             else
                 echo "// File ${file_name} already exists in working dir ... skipping operation"
+                ${CODE_DIRECTORY}/monitor_session_event_n_l_fn_fs.sh "file already exist" "$(ls -l "${work_directory}")"
             fi
         else
             echo "// File ${file_name} failed check ... skipping operation"
+            ${CODE_DIRECTORY}/monitor_session_event_n_l_fn_fs.sh "file failing check" ""
         fi
     else
         echo '// No file found ... skipping operation'
     fi
 else
     echo '// Lock failed ... skipping operation'
+    ${CODE_DIRECTORY}/monitor_service_event_n_l_fn_fs.sh "lock failed"
 fi
 
 # Release the lock
@@ -91,14 +101,40 @@ exec 9>&-
 if [ $new_file_to_process == "yes" ]; then
     # Move renamed file to Workspace
     echo "   Moving to Workspace ${input_path_renamed} ${work_path}"
+    ${CODE_DIRECTORY}/monitor_session_event_n_l_fn_fs.sh "moving file to workspace" "mv ${input_path_renamed} ${work_path}"
     mv ${input_path_renamed} ${work_path}
 
     # File are now in the work dir ... ready to be processed
 
+    if [ "${MONITOR_JOBS}" = "1" ]; then
+        # Force logging when monitoring
+        LOG_JOBS=1
+    fi
+
     # Run the job 
-    ${process_job} "${work_path}" "$@"
-    exit 0
+    if [ "${LOG_JOBS}" = "1" ]; then
+        log_directory=${work_directory}/logs
+        mkdir -p $log_directory
+        log_file=${log_directory}/${file_name_no_ext}.log
+
+        ${CODE_DIRECTORY}/monitor_session_event_n_l_fn_fs.sh "process job" 
+    	start_process=$(date)
+        ${process_job} "${work_path}" "$@" 2>&1 | tee ${log_file}
+    	end_process=$(date)
+
+    	# Append to common log file
+    	${code_directory}/append_to_log_common.sh "${log_directory}" "${start_process}" "${end_process}" ${log_file} 
+    	
+        ${CODE_DIRECTORY}/monitor_session_event_n_l_fn_fs.sh "process output" "@${log_file}"
+
+    else
+        ${process_job} "${work_path}" "$@"
+    fi
+
+    ${CODE_DIRECTORY}/monitor_session_end.sh
+    
 else
+    ${CODE_DIRECTORY}/monitor_session_end.sh
     exit 1
 fi
 

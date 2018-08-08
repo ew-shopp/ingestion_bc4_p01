@@ -51,12 +51,14 @@ while [ -f $run_file_name ]; do
         # No file processed ... wait
         if [[ $retry_max_count -eq 0 ]];  then
             echo "// Sleeping 60 Seconds"
+            ${CODE_DIRECTORY}/monitor_service_event_n_l_fn_fs.sh "idle"
             sleep 60
         else
             wait_count=$((wait_count+1))
             echo "// Sleeping 60 Seconds $wait_count of max $retry_max_count"
             if [[ $wait_count -gt $retry_max_count ]];  then
                 echo "Terminating idle script"
+                ${CODE_DIRECTORY}/monitor_service_event_n_l_fn_fs.sh "terminating idle script"
                 exit 0
             fi
             sleep 60

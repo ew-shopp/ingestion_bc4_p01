@@ -28,6 +28,7 @@ do
     shift
     
     echo "   Moving file ${from_file_path} to ${to_file_path_renamed}"
+    ${CODE_DIRECTORY}/monitor_session_event_n_l_fn_fs.sh "moving file from workspace" "mv ${from_file_path} ${to_file_path_renamed}"
     mv ${from_file_path} ${to_file_path_renamed}
     
     # Aquire lock
@@ -37,7 +38,9 @@ do
           
         # Rename file in output dir to assure complete operation before starting to consume
         echo "   Rename file in output dir ${to_file_path_renamed} ${to_file_path}"
+        ${CODE_DIRECTORY}/monitor_session_event_n_l_fn_fs.sh "renaming file" "mv ${to_file_path_renamed} ${to_file_path}"
         mv ${to_file_path_renamed} ${to_file_path}
+        ${CODE_DIRECTORY}/monitor_session_file.sh "outfile" ${to_file_path}
 
     fi
     # Release the lock
