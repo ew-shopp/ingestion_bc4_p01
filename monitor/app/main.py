@@ -25,8 +25,9 @@ from flask import request
 import json
 import jsonlines
 import os.path
-from time import sleep
-from threading import Thread, Event
+#from time import sleep
+#from threading import Thread, Event
+import time
 
 __author__ = 'slynn'
 
@@ -55,15 +56,36 @@ class Files():
     def getSize(self):
         return self._size
 
+class Times():
+    def __init__(self, epoch = '0', iso = '0'):
+        self._epoch = epoch
+        self._iso = iso
+
+    def getIso(self):
+        return self._iso
+        
+    def getEpoch(self):
+        ret = 0
+        try:
+            ret = int(self._epoch)
+        except ValueError:
+            ret = 0
+            
+        return ret
+        
+    def getNowDuration(self):
+        nowEpoch = int(time.time())
+        return nowEpoch - self.getEpoch()
+
 class Event():
     def __init__(self, msgDict):
         self._msgType = msgDict.get('type')
-        self._msgTime = msgDict.get('time')
+        self._msgTime = Times(msgDict.get('time_epoch'), msgDict.get('time_iso'))
         self._msgLog  = msgDict.get('log')
         self._msgName = msgDict.get('name')
         self._msgFilename = msgDict.get('filename')
         self._msgFilesize = msgDict.get('filesize')
-        self._endTime = '0'
+        self._endTime = Times()
         
     def getName(self):
         return self._msgName
@@ -84,29 +106,44 @@ class Event():
         return ret
 
     
-    def setEndTime(self, time):
-        self._endTime = time
-        
+    def setEndTime(self, timeObj):
+        self._endTime = timeObj
+      
 class Entry():
+    _entryArr = []
+
+    @staticmethod
+    def getEntryByIndex(index):
+        ret = None
+        if index < len(Entry._entryArr):
+            ret = Entry._entryArr(index)
+            
+        return ret
+    
     def __init__(self, msgIdDict):
         self._msgIdDict = msgIdDict
         self._msgInst = msgIdDict.get('inst')
+        self._msgHost = msgIdDict.get('host')
         self._msgType = msgIdDict.get('type')
         self._updates = 0
         self._events = []
         self._subs = {}
-        self._start = '0'
-        self._end = '0'
+        self._start = Times()
+        self._end = Times()
         self._state = 'init'
         self._lastEvent = None
         self._inFiles = Files()
         self._outFiles =  Files()
         self._subInFiles = Files()
         self._subOutFiles =  Files()
+        
+        # Add obj into array for later lookup by index
+        self._myIndex = len(Entry._entryArr)
+        Entry._entryArr.append(self)
 
     def post(self, msgDict):
         self._updates += 1
-        #print "updates: %d" % (self.updates)
+        #print "updates: %d" % (self._updates)
         print "(%s)msgDict: %s" % (self._msgInst, msgDict)
 
         if msgDict.has_key('event'):
@@ -118,7 +155,7 @@ class Entry():
                 self._events.append(newEvent)
                 eventName = newEvent.getName()
                 eventTime = newEvent.getTime()
-                print "(%s)newEvent: %s %s" % (self._msgInst, eventName, eventTime)
+                print "(%s)newEvent: %s %s" % (self._msgInst, eventName, eventTime.getIso())
                 if self._lastEvent != None:
                     self._lastEvent.setEndTime(eventTime)
                     
@@ -142,6 +179,7 @@ class Entry():
             if not subDict is None:
                 subIdDict = subDict.get('id')
                 subInst = subIdDict.get('inst')
+                subHost = subIdDict.get('host')
                 subType = subIdDict.get('type')
                 
                 if not self._subs.has_key(subInst):
@@ -159,6 +197,10 @@ class Entry():
                 self._subInFiles = subInFiles
                 self._subOutFiles = subOutFiles
         
+        # Generate new html for entry
+        sectionHtml = self.getDetailHtml()
+        socketio.emit(str(self._myIndex), {'section': sectionHtml}, namespace='/commio')
+
     def getInFiles(self):
         ret = self._inFiles.copy()
         ret.addFiles(self._subInFiles)
@@ -169,18 +211,52 @@ class Entry():
         ret.addFiles(self._subOutFiles)
         return ret
 
+    def getDurationSec(self):
+        if self._start.getEpoch() == 0:
+            return 0
+        if self._end.getEpoch() == 0:
+            return self._start.getNowDuration()
+            
+        return self._end.getEpoch() - self._start.getEpoch()
+        
     def isActive(self):
         ret = True
         if self._state == 'end':
             ret = False
         return ret
         
+    def getDetailHtml(self):
+        contentHtml = ""
+        try:
+            contentHtml += "This is instance %s with index %s updates %d" % (self._msgInst, self._myIndex, self._updates) 
+            #contentHtml += "Bla"
+        except:
+            contentHtml = ""
+        
+        return contentHtml
+
     def getSummaryHtml(self):
         contentHtml = ""
+        
+        contentHtml += '<div class="entry-sum-card mdl-card mdl-shadow--2dp">'
+        contentHtml += '  <div class="mdl-card__title">'
+        contentHtml += '    <h3 class="mdl-card__title-text">%s</h3>' % self._msgHost
+        contentHtml += '  </div>'
+        contentHtml += '  <div class="mdl-card__menu">'
+        contentHtml += '    <a href="/entry/%d">' % self._myIndex
+        contentHtml += '      <button class="mdl-button mdl-button--icon mdl-js-button mdl-js-ripple-effect">'
+        contentHtml += '        <i class="material-icons">unfold_more</i>'
+        contentHtml += '      </button>'
+        contentHtml += '    </a>'
+        contentHtml += '  </div>'
+        contentHtml += '  <div class="mdl-card__supporting-text">'
+        
         contentHtml += "<table>"
-        contentHtml += "<tr><th>%s</th><th>%s</th></tr>" % (self._state, self._msgInst)
-        contentHtml += "<tr><td>%s</td><td>%s</td></tr>" % ('Start', self._start)
-        contentHtml += "<tr><td>%s</td><td>%s</td></tr>" % ('End', self._end)
+        contentHtml += "<tr><td>%s</td><td>%s</td></tr>" % ('State', self._state)
+        contentHtml += "<tr><td>%s</td><td>%s</td></tr>" % ('Start', self._start.getIso())
+        contentHtml += "<tr><td>%s</td><td>%s</td></tr>" % ('End', self._end.getIso())
+        durationSec = self.getDurationSec()
+        contentHtml += "<tr><td>%s</td><td>%s</td></tr>" % ('Duration (s)', durationSec)
         contentHtml += "<tr><td>%s</td><td>%d</td></tr>" % ('Events', len(self._events))
         
         active = 0
@@ -190,12 +266,25 @@ class Entry():
         contentHtml += "<tr><td>%s</td><td>%d / %d</td></tr>" % ('Subs', active, len(self._subs))
         
         inFiles = self.getInFiles()
-        contentHtml += "<tr><td>%s</td><td>%d / %d</td></tr>" % ('In files', inFiles.getNum(), inFiles.getSize())
-        
+        sizeKb = inFiles.getSize()/1024.0
+        kbPrMin = 0
+        if durationSec > 0:
+            kbPrMin = sizeKb / (durationSec/60.0)
+        contentHtml += "<tr><td>%s</td><td>%d / %.3f </td></tr>" % ('In files n / kB', inFiles.getNum(), sizeKb)
+        contentHtml += "<tr><td>%s</td><td> %.3f</td></tr>" % ('- kB per min', kbPrMin)         
+
         outFiles = self.getOutFiles()
-        contentHtml += "<tr><td>%s</td><td>%d / %d</td></tr>" % ('Out files', outFiles.getNum(), outFiles.getSize())
+        sizeKb = outFiles.getSize()/1024.0
+        kbPrMin = 0
+        if durationSec > 0:
+            kbPrMin = sizeKb / (durationSec/60.0)
+        contentHtml += "<tr><td>%s</td><td>%d / %.3f</td></tr>" % ('Out files', outFiles.getNum(), sizeKb)
+        contentHtml += "<tr><td>%s</td><td> %.3f</td></tr>" % ('- kB per min', kbPrMin)         
             
         contentHtml += "</table>"
+
+        contentHtml += '  </div>'
+        contentHtml += '</div>'        
         return contentHtml
 
 class StateMonitor():
@@ -247,25 +336,32 @@ class StateMonitor():
 
     def updatePage(self):        
         sectionHtml = ""
-        sectionHtml += "<table>"
         
+        sectionHtml += '<div class="type-sum-container">'
         
         msgTypes = sorted(list(self._entries.keys()))
         for msgType in msgTypes:
             typeDict = self._entries[msgType]
-            sectionHtml += "<tr>"
+            sectionHtml += '<div>'
+            
+            sectionHtml += '<div class="inst-sum-container">'
+            sectionHtml += '<div class="rotate-text">'
+            sectionHtml += msgType
+            sectionHtml += '</div>'
             
             msgInsts = sorted(list(typeDict.keys()))
             for msgInst in msgInsts:
+                sectionHtml += '<div>'
                 entry = typeDict[msgInst]
-                sectionHtml += "<td>"
                 sectionHtml += entry.getSummaryHtml()
-                sectionHtml += "</td>"
+                sectionHtml += '</div>'
+            sectionHtml += '</div>'
                 
-            sectionHtml += "</tr>"
-        sectionHtml += "</table>"
+            sectionHtml += '</div>'
+
+        sectionHtml += '</div>'
         
-        socketio.emit('dynsection', {'dynsection': sectionHtml}, namespace='/test')
+        socketio.emit('top', {'section': sectionHtml}, namespace='/commio')
        
 stateMonitor = StateMonitor('log.jsonl')
 stateMonitor.readFromLog()
@@ -273,6 +369,10 @@ stateMonitor.readFromLog()
 @app.route('/')
 def index():
     #only by sending this page first will the client be connected to the socketio instance
+    return render_template('index.html')
+
+@app.route('/entry/<index>')
+def entryIndex(index):
     return render_template('index.html')
 
 @app.route('/log', methods = ['POST'])
@@ -285,15 +385,15 @@ def api_log():
     else:
         return "415 Unsupported Media Type ;)"
 
-@socketio.on('connect', namespace='/test')
-def test_connect():
+@socketio.on('connect', namespace='/commio')
+def commio_connect():
     # need visibility of the global thread object
     #global thread
     print('Client connected')
     stateMonitor.updatePage()
 
-@socketio.on('disconnect', namespace='/test')
-def test_disconnect():
+@socketio.on('disconnect', namespace='/commio')
+def commio_disconnect():
     print('Client disconnected')
 
 

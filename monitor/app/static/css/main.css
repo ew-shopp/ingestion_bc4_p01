@@ -1,0 +1,40 @@
+.entry-sum-card.mdl-card {
+    //width: 512px;
+}
+.entry-sum-card > .mdl-card__title {
+    background-color: rgb(63,81,181);
+    color: rgb(255,255,255);
+}
+.entry-sum-card > .mdl-card__menu {
+    background-color: rgb(63,81,181);
+    color: rgb(255,255,255);
+}
+.inst-sum-container {
+    display: flex;
+    background-color: LightGray;
+    flex-direction: row;
+    flex-wrap: wrap;
+    
+}
+
+.inst-sum-container > div {
+  margin: 5px;
+}
+
+.rotate-text {
+    writing-mode: vertical-rl;
+}
+
+.type-sum-container {
+    display: flex;
+    background-color: rgb(63,81,181);
+    flex-direction: column;
+
+}
+
+.type-sum-container > div {
+  margin: 1px;
+}
+
+
+

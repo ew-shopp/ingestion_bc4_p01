@@ -8,8 +8,9 @@ if [ "${MONITOR_JOBS}" = "1" ]; then
     filesize=$4
     
     ### Create an event json object
-    date="$(date '--iso-8601=seconds')"
-    event=$(jo name="$name" log="$log" filename="$filename" filesize="$filesize" type="event" time="$date" )
+    date_iso="$(date '--iso-8601=seconds')"
+    date_epoch="$(date '+%s')"
+    event=$(jo name="$name" log="$log" filename="$filename" filesize="$filesize" type="event" time_iso="$date_iso" time_epoch="$date_epoch" )
 fi
 echo $event
      

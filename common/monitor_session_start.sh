@@ -6,7 +6,7 @@ if [ "${MONITOR_JOBS}" = "1" ]; then
     ### Create the id file for the session
     date="$(date '+%Y%m%d_%T_%N')"
     type='session'
-    id="$(jo inst=$date type=$type)"
+    id="$(jo inst=$date type=$type host=$type)"
     echo "$id" > $SESSION_ID_FILE_NAME
     
     

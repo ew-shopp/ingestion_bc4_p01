@@ -14,7 +14,7 @@ if [ "${MONITOR_JOBS}" = "1" ]; then
     if [ -f "$type_name_script" ]; then
        type="$(${type_name_script})"
     fi
-    id="$(jo inst=$hostid type=$type)"
+    id="$(jo inst=$hostid host=$hostname type=$type)"
     echo "$id" > $SERVICE_ID_FILE_NAME
     
     
