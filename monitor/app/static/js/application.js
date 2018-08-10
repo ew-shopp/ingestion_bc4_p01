@@ -6,20 +6,45 @@ $(document).ready(function(){
     var numbers_received = [];
     var path = location.pathname;
     
+    
+    //debugger;
+    
+    type = '';
+    index = -1;
+    
     if (path == "/" ) {
-        path = 'top';
+        type = 'top';
+        name = 'top';
     }
     else {
         sections = path.split("/");
-        path = sections[sections.length-1];
+        type = sections[sections.length-2]
+        index = parseInt(sections[sections.length-1]);
+        name = type+sections[sections.length-1];
     }
 
-    console.log("Using path " + path);
+    var requestData = new Object();
+    requestData.type = type;
+    requestData.index = index;
+    requestJson = JSON.stringify(requestData);
+    
+    console.log("Using request " + requestJson);
+
+
+    socket.on('connect', function(){
+        console.log("Callback connect");
+        //ask for latest data from server and place a subscription
+        socket.emit('request_update', requestJson);
+    });
     
     //receive details from server
-    socket.on(path, function(msg) {
-        console.log("Received " + path + " " + msg.section);
+    socket.on(name, function(msg) {
+        //console.log("Received " + name + " " + msg.section);
+        console.log("Received " + name );
         $('#dynsection').html(msg.section);
+        
+        //refresh subscription
+        socket.emit('subscribe_update', requestJson);
     });
 
 });

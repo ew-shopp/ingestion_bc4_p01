@@ -1,35 +1,13 @@
-"""
-Demo Flask application to test the operation of Flask with socket.io
 
-Aim is to create a webpage that is constantly updated with random numbers from a background python process.
-
-30th May 2014
-
-===================
-
-Updated 13th April 2018
-
-+ Upgraded code to Python 3
-+ Used Python3 SocketIO implementation
-+ Updated CDN Javascript and CSS sources
-
-"""
-
-
-
-
-# Start with a basic flask app webpage.
 from flask_socketio import SocketIO, emit
 from flask import Flask, render_template, url_for, copy_current_request_context
 from flask import request
 import json
 import jsonlines
 import os.path
-#from time import sleep
-#from threading import Thread, Event
 import time
 
-__author__ = 'slynn'
+__author__ = 'sdalgard'
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -38,6 +16,58 @@ app.config['DEBUG'] = True
 #turn the flask app into a socketio app
 socketio = SocketIO(app)
 
+class SidEntry():
+    def __init__(self, sid):
+        self._sid = sid
+        self._connect = 0
+        self._disconnect = 0
+        
+    def connect(self):
+        self._connect += 1
+        
+    def disconnect(self):
+        self._disconnect +=1
+        
+    def connections(self):
+        return self._connect - self._disconnect
+        
+    def status(self):
+        stat = "Conns:%d Conn:%d Disc:%d Sid:<%s>" % (self.connections(), self._connect, self._disconnect, self._sid)
+        return stat
+        
+class Connections():
+    def __init__(self):
+        self._sidEntries = {}
+        
+    def connectSid(self, sid):
+        se = self._sidEntries.get(sid)
+        
+        if se is None:
+            se = SidEntry(sid)
+            se.connect()
+            self._sidEntries[sid] = se
+        else:
+            se.connect()
+
+        #print "ConnectSid(%s) now %d connections" % (sid, se.connections())
+            
+    def disconnectSid(self, sid):
+        se = self._sidEntries.get(sid)
+        if se is None:
+            print "DisconnectSid(%s) cannot find entry" % sid
+        else:
+            se.disconnect()
+            #print "DisconnectSid(%s) now %d connections" % (sid, se.connections())
+            
+    def status(self):
+        count = 0
+        for key in self._sidEntries:
+            se = self._sidEntries[key]
+            if se.connections() != 0:
+                count += 1
+                print "%d - %s" % (count, se.status())            
+        
+        
 class Files():
     def __init__(self, num = 0, size = 0):
         self._num = num
@@ -105,18 +135,26 @@ class Event():
             
         return ret
 
-    
     def setEndTime(self, timeObj):
         self._endTime = timeObj
+
+    def getOnelineHtml(self):
+        contentHtml = ''
+        contentHtml += '%s : %s' % (self._msgType, self._msgName)
+        return contentHtml
       
 class Entry():
-    _entryArr = []
+    _entryArr = []  #Static array with all entries
 
     @staticmethod
     def getEntryByIndex(index):
         ret = None
+
+        if index < 0:
+            return None
+            
         if index < len(Entry._entryArr):
-            ret = Entry._entryArr(index)
+            ret = Entry._entryArr[index]
             
         return ret
     
@@ -125,6 +163,7 @@ class Entry():
         self._msgInst = msgIdDict.get('inst')
         self._msgHost = msgIdDict.get('host')
         self._msgType = msgIdDict.get('type')
+        self._hasListener = 0
         self._updates = 0
         self._events = []
         self._subs = {}
@@ -141,6 +180,20 @@ class Entry():
         self._myIndex = len(Entry._entryArr)
         Entry._entryArr.append(self)
 
+    def requestUpdate(self):
+        self._hasListener = 2 # Make some margin in case of lost requests
+        self.sendUpdate()
+        
+    def subscribeUpdate(self):
+        self._hasListener = 2 # Make some margin in case of lost requests
+        
+    def sendUpdate(self):
+        if self._hasListener > 0:
+            self._hasListener -= 1
+            # Generate new html for entry
+            sectionHtml = self.getDetailHtml()
+            socketio.emit('entry'+str(self._myIndex), {'section': sectionHtml}, namespace='/commio')
+        
     def post(self, msgDict):
         self._updates += 1
         #print "updates: %d" % (self._updates)
@@ -197,9 +250,7 @@ class Entry():
                 self._subInFiles = subInFiles
                 self._subOutFiles = subOutFiles
         
-        # Generate new html for entry
-        sectionHtml = self.getDetailHtml()
-        socketio.emit(str(self._myIndex), {'section': sectionHtml}, namespace='/commio')
+        self.sendUpdate()
 
     def getInFiles(self):
         ret = self._inFiles.copy()
@@ -225,19 +276,8 @@ class Entry():
             ret = False
         return ret
         
-    def getDetailHtml(self):
+    def makeCard(self, supportingHtml):
         contentHtml = ""
-        try:
-            contentHtml += "This is instance %s with index %s updates %d" % (self._msgInst, self._myIndex, self._updates) 
-            #contentHtml += "Bla"
-        except:
-            contentHtml = ""
-        
-        return contentHtml
-
-    def getSummaryHtml(self):
-        contentHtml = ""
-        
         contentHtml += '<div class="entry-sum-card mdl-card mdl-shadow--2dp">'
         contentHtml += '  <div class="mdl-card__title">'
         contentHtml += '    <h3 class="mdl-card__title-text">%s</h3>' % self._msgHost
@@ -250,6 +290,15 @@ class Entry():
         contentHtml += '    </a>'
         contentHtml += '  </div>'
         contentHtml += '  <div class="mdl-card__supporting-text">'
+        
+        contentHtml += supportingHtml
+
+        contentHtml += '  </div>'
+        contentHtml += '</div>'        
+        return contentHtml
+        
+    def makeSummaryTable(self):
+        contentHtml = ""
         
         contentHtml += "<table>"
         contentHtml += "<tr><td>%s</td><td>%s</td></tr>" % ('State', self._state)
@@ -282,35 +331,117 @@ class Entry():
         contentHtml += "<tr><td>%s</td><td> %.3f</td></tr>" % ('- kB per min', kbPrMin)         
             
         contentHtml += "</table>"
+        
+        return contentHtml
+    
+    def makeSessionTable(self):
+        contentHtml = ''
+
+        contentHtml += "<table>"
+
+        sortedSubKeys = sorted(list(self._subs.keys()))
+        for subKey in sortedSubKeys:
+            sub = self._subs[subKey]
+            contentHtml += "<tr><td>%s</td></tr>" % (sub.getOnelineHtml())
+
+        contentHtml += "</table>"
+        return contentHtml
+
+    def makeEventTable(self):
+        contentHtml = ''
+
+        contentHtml += "<table>"
+
+        for event in self._events:
+            contentHtml += "<tr><td>%s</td></tr>" % (event.getOnelineHtml())
+
+        contentHtml += "</table>"
+        return contentHtml
+
+    def getOnelineHtml(self):
+        contentHtml = ''
+        contentHtml += '<a href="/entry/%d">' % self._myIndex
+        contentHtml += '%s : %s' % (self._msgType, self._msgInst)
+        contentHtml += '</a>' 
+        return contentHtml
+            
+    def getDetailHtml(self):
+        contentHtml = ''
+
+        summaryTableHtml = self.makeSummaryTable()
+        sessionTableHtml = self.makeSessionTable()
+        eventTableHtml = self.makeEventTable()
+
+
+        contentHtml = ""
+        contentHtml += '<div class="entry-detail-card mdl-card mdl-shadow--2dp">'
+        contentHtml += '  <div class="mdl-card__title">'
+        contentHtml += '    <h3 class="mdl-card__title-text">%s</h3>' % self._msgHost
+        contentHtml += '  </div>'
+        contentHtml += '  <div class="mdl-card__supporting-text">'
+
+        contentHtml += '    <div class="entry-detail-container">'
+        contentHtml += '      <div>'
+        contentHtml +=          summaryTableHtml
+        contentHtml += '      </div>'
+        contentHtml += '      <div>'
+        contentHtml +=          sessionTableHtml
+        contentHtml += '      </div>'
+        contentHtml += '      <div>'
+        contentHtml +=          eventTableHtml
+        contentHtml += '      </div>'
+        contentHtml += '    </div>'
+
 
         contentHtml += '  </div>'
         contentHtml += '</div>'        
+
+        return contentHtml
+
+    def getSummaryHtml(self):
+        contentHtml = ""
+
+        summaryTableHtml = self.makeSummaryTable()
+
+        contentHtml += '<div class="entry-sum-card mdl-card mdl-shadow--2dp">'
+        contentHtml += '  <div class="mdl-card__title">'
+        contentHtml += '    <h3 class="mdl-card__title-text">%s</h3>' % self._msgHost
+        contentHtml += '  </div>'
+        contentHtml += '  <div class="mdl-card__menu">'
+        contentHtml += '    <a href="/entry/%d">' % self._myIndex
+        contentHtml += '      <button class="mdl-button mdl-button--icon mdl-js-button mdl-js-ripple-effect">'
+        contentHtml += '        <i class="material-icons">unfold_more</i>'
+        contentHtml += '      </button>'
+        contentHtml += '    </a>'
+        contentHtml += '  </div>'
+        contentHtml += '  <div class="mdl-card__supporting-text">'
+        
+        contentHtml += summaryTableHtml
+
+        contentHtml += '  </div>'
+        contentHtml += '</div>'        
+
         return contentHtml
 
 class StateMonitor():
     def __init__(self, logFilename):
         self._entries = {}
         self._logFilename = logFilename
+        self._hasListener = 0
         
-    def readFromLog(self):
-        if os.path.isfile(self._logFilename):
-            print "Starting to read from file: " + self._logFilename
-            with jsonlines.open(self._logFilename) as reader:
-                for jsonStr in reader:
-                    #print "Read json " + jsonStr
-                    self.post(json.loads(jsonStr), True)
-                    
-            print "Reached end in file: " + self._logFilename
-            self.updatePage()
-        else:
-            print "Cannot find file: " + self._logFilename
-
-
-    def writeToLog(self, dictToWrite):
-        jsonStr = json.dumps(dictToWrite)
-        #print "Write json " + jsonStr
-        with jsonlines.open(self._logFilename, mode='a') as writer:
-            writer.write(jsonStr)
+    def requestUpdate(self):
+        self._hasListener = 2 # Make some margin in case of lost requests
+        self.sendUpdate()
+        
+    def subscribeUpdate(self):
+        self._hasListener = 2 # Make some margin in case of lost requests
+        
+    def sendUpdate(self):
+        if self._hasListener > 0:
+            self._hasListener -= 1
+            # Generate new html for summary page
+            sectionHtml = self.getSummaryHtml()
+            socketio.emit('top', {'section': sectionHtml}, namespace='/commio')
         
     def post(self, msgDict, startup = False):
         if not startup:
@@ -331,10 +462,9 @@ class StateMonitor():
         entry.post(msgDict)
 
         if not startup:
-            self.updatePage()
+            self.sendUpdate()
             
-
-    def updatePage(self):        
+    def getSummaryHtml(self):        
         sectionHtml = ""
         
         sectionHtml += '<div class="type-sum-container">'
@@ -360,11 +490,32 @@ class StateMonitor():
             sectionHtml += '</div>'
 
         sectionHtml += '</div>'
+        return sectionHtml
+               
+    def readFromLog(self):
+        if os.path.isfile(self._logFilename):
+            print "Starting to read from file: " + self._logFilename
+            with jsonlines.open(self._logFilename) as reader:
+                for jsonStr in reader:
+                    #print "Read json " + jsonStr
+                    self.post(json.loads(jsonStr), True)
+                    
+            print "Reached end in file: " + self._logFilename
+            self.sendUpdate()
+        else:
+            print "Cannot find file: " + self._logFilename
+
+
+    def writeToLog(self, dictToWrite):
+        jsonStr = json.dumps(dictToWrite)
+        #print "Write json " + jsonStr
+        with jsonlines.open(self._logFilename, mode='a') as writer:
+            writer.write(jsonStr)
         
-        socketio.emit('top', {'section': sectionHtml}, namespace='/commio')
-       
 stateMonitor = StateMonitor('log.jsonl')
 stateMonitor.readFromLog()
+
+currentConnections = Connections()
 
 @app.route('/')
 def index():
@@ -387,15 +538,41 @@ def api_log():
 
 @socketio.on('connect', namespace='/commio')
 def commio_connect():
-    # need visibility of the global thread object
-    #global thread
-    print('Client connected')
-    stateMonitor.updatePage()
+    print('Client connected <%s>' % (request.sid))
 
 @socketio.on('disconnect', namespace='/commio')
 def commio_disconnect():
-    print('Client disconnected')
+    print('Client disconnected <%s>' % (request.sid))
 
+@socketio.on('request_update', namespace='/commio')
+def commio_requests_update(jsonStr):
+    print "Received request_update: " + str(jsonStr)
+    rxDict = json.loads(jsonStr)
+    rxType = rxDict.get('type')
+    rxIndex = rxDict.get('index')
+    obj = None
+    if rxType == 'top':
+        obj = stateMonitor
+    elif rxType == 'entry':
+        obj = Entry.getEntryByIndex(rxIndex)
+        
+    if not obj is None:
+        obj.requestUpdate()
+        
+@socketio.on('subscribe_update', namespace='/commio')
+def commio_subscribe_update(jsonStr):
+    print "Received subscribe_update: " + str(jsonStr)
+    rxDict = json.loads(jsonStr)
+    rxType = rxDict.get('type')
+    rxIndex = rxDict.get('index')
+    obj = None
+    if rxType == 'top':
+        obj = stateMonitor
+    elif rxType == 'entry':
+        obj = Entry.getEntryByIndex(rxIndex)
+        
+    if not obj is None:
+        obj.subscribeUpdate()
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=int("5000"))
