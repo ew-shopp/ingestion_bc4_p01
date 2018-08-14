@@ -87,7 +87,7 @@ class Files():
         return self._size
 
 class Times():
-    def __init__(self, epoch = '0', iso = '0'):
+    def __init__(self, epoch = '0', iso = ''):
         self._epoch = epoch
         self._iso = iso
 
@@ -103,7 +103,7 @@ class Times():
             
         return ret
         
-    def getNowDuration(self):
+    def getNowDurationEpoch(self):
         nowEpoch = int(time.time())
         return nowEpoch - self.getEpoch()
 
@@ -167,11 +167,13 @@ class Entry():
         self._updates = 0
         self._events = []
         self._subs = {}
-        self._start = Times()
+        self._start = Times(int(time.time()))
         self._end = Times()
-        self._state = 'init'
+        self._state = ''
+        self._parentEntry = None
         self._lastEvent = None
         self._inFiles = Files()
+        self._inFilename = ""
         self._outFiles =  Files()
         self._subInFiles = Files()
         self._subOutFiles =  Files()
@@ -180,6 +182,17 @@ class Entry():
         self._myIndex = len(Entry._entryArr)
         Entry._entryArr.append(self)
 
+    def setParentEntry(self, parentEntry):
+        self._parentEntry = parentEntry
+
+    def reportSubStart(self, start):
+        if self._start.getIso() == '':
+            self._start = start
+        
+    def reportParentEnd(self, end):
+        if self._end.getIso() == '':
+            self._end = end
+        
     def requestUpdate(self):
         self._hasListener = 2 # Make some margin in case of lost requests
         self.sendUpdate()
@@ -197,13 +210,13 @@ class Entry():
     def post(self, msgDict):
         self._updates += 1
         #print "updates: %d" % (self._updates)
-        print "(%s)msgDict: %s" % (self._msgInst, msgDict)
+        #print "(%s)msgDict: %s" % (self._msgInst, msgDict)
 
         if msgDict.has_key('event'):
             eventDict = msgDict.get('event')
             if not eventDict is None:
-                print type(eventDict)
-                print eventDict
+                #print type(eventDict)
+                #print eventDict
                 newEvent = Event(eventDict)
                 self._events.append(newEvent)
                 eventName = newEvent.getName()
@@ -215,12 +228,21 @@ class Entry():
                 if eventName == 'start':
                     self._start = eventTime
                     self._state = eventName
+                    parent = self._parentEntry
+                    if not parent is None:
+                        parent.reportSubStart(eventTime)
+                        
                 if eventName == 'end':
                     self._end = eventTime
                     self._state = eventName
+                    for key in self._subs:
+                        self._subs[key].reportParentEnd(eventTime)
+                    
                 if eventName == 'infile':
                     print "infile"
                     self._inFiles.addFiles( Files(1, newEvent.getFilesize()))
+                    if self._inFilename == "":
+                        self._inFilename = newEvent.getFilename()
                     print self._inFiles
                 if eventName == 'outfile':
                     self._outFiles.addFiles( Files(1, newEvent.getFilesize()))
@@ -236,7 +258,9 @@ class Entry():
                 subType = subIdDict.get('type')
                 
                 if not self._subs.has_key(subInst):
-                    self._subs[subInst] = Entry(subIdDict)
+                    entry = Entry(subIdDict)
+                    entry.setParentEntry(self)
+                    self._subs[subInst] = entry
 
                 sub = self._subs[subInst]
                 sub.post(subDict)
@@ -266,7 +290,7 @@ class Entry():
         if self._start.getEpoch() == 0:
             return 0
         if self._end.getEpoch() == 0:
-            return self._start.getNowDuration()
+            return self._start.getNowDurationEpoch()
             
         return self._end.getEpoch() - self._start.getEpoch()
         
@@ -361,10 +385,26 @@ class Entry():
     def getOnelineHtml(self):
         contentHtml = ''
         contentHtml += '<a href="/entry/%d">' % self._myIndex
-        contentHtml += '%s : %s' % (self._msgType, self._msgInst)
+        contentHtml += '%s - %s' % (self._state, self.getTitle())
         contentHtml += '</a>' 
         return contentHtml
             
+    def getTitle(self):
+        hasHost = False
+        
+        title = self._msgType
+        if self._inFilename != "":
+            title += " : %s" % self._inFilename
+        else:
+            if (not self._msgHost is None) and (self._msgHost != ""):
+                title += " : %s" % self._msgHost
+                
+            if self._msgHost != 'top':
+                if self._start.getIso() != "":
+                    title += " : %s" % self._start.getIso()
+
+        return title
+        
     def getDetailHtml(self):
         contentHtml = ''
 
@@ -376,7 +416,8 @@ class Entry():
         contentHtml = ""
         contentHtml += '<div class="entry-detail-card mdl-card mdl-shadow--2dp">'
         contentHtml += '  <div class="mdl-card__title">'
-        contentHtml += '    <h3 class="mdl-card__title-text">%s</h3>' % self._msgHost
+        
+        contentHtml += '    <h3 class="mdl-card__title-text">%s</h3>' % self.getTitle()
         contentHtml += '  </div>'
         contentHtml += '  <div class="mdl-card__supporting-text">'
 
@@ -405,7 +446,9 @@ class Entry():
 
         contentHtml += '<div class="entry-sum-card mdl-card mdl-shadow--2dp">'
         contentHtml += '  <div class="mdl-card__title">'
-        contentHtml += '    <h3 class="mdl-card__title-text">%s</h3>' % self._msgHost
+
+        title = "%s : %s" % (self._msgType, self._msgInst)
+        contentHtml += '    <h3 class="mdl-card__title-text">%s</h3>' % title
         contentHtml += '  </div>'
         contentHtml += '  <div class="mdl-card__menu">'
         contentHtml += '    <a href="/entry/%d">' % self._myIndex
@@ -425,7 +468,7 @@ class Entry():
 
 class StateMonitor():
     def __init__(self, logFilename):
-        self._entries = {}
+        self._types = {}
         self._logFilename = logFilename
         self._hasListener = 0
         
@@ -446,50 +489,35 @@ class StateMonitor():
     def post(self, msgDict, startup = False):
         if not startup:
             self.writeToLog(msgDict)
-        
+
         msgIdDict = msgDict.get('id')
         
         msgInst = msgIdDict.get('inst')
         msgType = msgIdDict.get('type')
-        if not self._entries.has_key(msgType):
-            self._entries[msgType] = {}
-        typeDict = self._entries[msgType]
-            
-        if not typeDict.has_key(msgInst):
-            typeDict[msgInst] = Entry(msgIdDict)
-        entry = typeDict[msgInst]
-            
+
+        if not self._types.has_key(msgType):
+            self._types[msgType] = Entry(msgIdDict)
+        entry = self._types[msgType]
+
         entry.post(msgDict)
 
         if not startup:
             self.sendUpdate()
+
             
     def getSummaryHtml(self):        
         sectionHtml = ""
-        
-        sectionHtml += '<div class="type-sum-container">'
-        
-        msgTypes = sorted(list(self._entries.keys()))
-        for msgType in msgTypes:
-            typeDict = self._entries[msgType]
-            sectionHtml += '<div>'
-            
-            sectionHtml += '<div class="inst-sum-container">'
-            sectionHtml += '<div class="rotate-text">'
-            sectionHtml += msgType
-            sectionHtml += '</div>'
-            
-            msgInsts = sorted(list(typeDict.keys()))
-            for msgInst in msgInsts:
-                sectionHtml += '<div>'
-                entry = typeDict[msgInst]
-                sectionHtml += entry.getSummaryHtml()
-                sectionHtml += '</div>'
-            sectionHtml += '</div>'
-                
-            sectionHtml += '</div>'
 
+        sectionHtml += '<div class="inst-sum-container">'
+        
+        msgTypes = sorted(list(self._types.keys()))
+        for msgType in msgTypes:
+            sectionHtml += '<div>'
+            entry = self._types[msgType]
+            sectionHtml += entry.getSummaryHtml()
+            sectionHtml += '</div>'
         sectionHtml += '</div>'
+
         return sectionHtml
                
     def readFromLog(self):
@@ -558,6 +586,8 @@ def commio_requests_update(jsonStr):
         
     if not obj is None:
         obj.requestUpdate()
+    else:
+        socketio.emit(rxType+str(rxIndex), {'section': 'ERROR - no content'}, namespace='/commio')
         
 @socketio.on('subscribe_update', namespace='/commio')
 def commio_subscribe_update(jsonStr):
