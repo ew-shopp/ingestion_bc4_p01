@@ -30,18 +30,19 @@ do
     echo "   Moving file ${from_file_path} to ${to_file_path_renamed}"
     mv ${from_file_path} ${to_file_path_renamed}
     
-    # Aquire lock
-    exec 9>$output_lock_file
-    echo "// Aquire lock ${output_lock_file}"
-    if flock 9; then   # Blocking wait
+#    # Aquire lock
+#    exec 9>$output_lock_file
+#    echo "// Aquire lock ${output_lock_file}"
+#    if flock 9; then   # Blocking wait
+    echo "// No output lock used"
           
         # Rename file in output dir to assure complete operation before starting to consume
         echo "   Rename file in output dir ${to_file_path_renamed} ${to_file_path}"
         mv ${to_file_path_renamed} ${to_file_path}
 
-    fi
-    # Release the lock
-    exec 9>&-
+#    fi
+#    # Release the lock
+#    exec 9>&-
 
 done
 

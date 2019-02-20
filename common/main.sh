@@ -35,10 +35,14 @@ fi
 mkdir -p $work_directory/run
 run_file_name=`mktemp -t -p ${work_directory}/run`
 
+# Make unique working directory
+unique_work_directory = $work_directory/$HOSTNAME
+mkdir -p $unique_work_directory
+
 trap gracefulshutdown SIGINT SIGTERM
 
-echo "Main - Starting $run_file_name"
-$cmd_to_run $run_file_name "$@" &
+echo "Main - Starting $run_file_name with working dir set to $unique_work_directory"
+$cmd_to_run $run_file_name "${@:1:3}" "$unique_work_directory" "${@:5}" &
 pid=$!
 
 # This will wait until the cmd ends or we receive SIGINT

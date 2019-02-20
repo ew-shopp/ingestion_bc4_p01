@@ -33,10 +33,11 @@ lock_file="${input_directory}/dir_rw.lock"
 
 new_file_to_process="no"
 
-# Aquire lock
-echo "// Aquire lock ${lock_file}"
-exec 9>$lock_file
-if flock 9; then   # Blocking wait
+## Aquire lock
+#echo "// Aquire lock ${lock_file}"
+#exec 9>$lock_file
+#if flock 9; then   # Blocking wait
+echo "// No input lock used"
     
     # Check if there are files to process
     nfiles="$(find "${input_directory}" -name "${input_file_spec}" | wc -l)"
@@ -53,6 +54,27 @@ if flock 9; then   # Blocking wait
         input_path_renamed=${input_path}.inmove
         work_path=${work_directory}/${file_name}
 
+        # Check if file is being updated
+        first_stat = "$(stat -c %y "$file_name")"
+        echo "first_stat: first_stat"
+        
+        sleep 1
+        second_stat = "$(stat -c %y "$file_name")"
+        echo "second_stat: second_stat"
+        if [ "$first_stat" != "$second_stat" ]; then
+            echo "// File ${file_name} failed stat check 1 ... skipping operation"
+            exit 0
+        fi
+        
+        sleep 1
+        third_stat = "$(stat -c %y "$file_name")"
+        echo "third_stat: third_stat"
+        if [ "$first_stat" != "$third_stat" ]; then
+            echo "// File ${file_name} failed stat check 2 ... skipping operation"
+            exit 0
+        fi
+
+        
         # Call script to check if file is complete - exit 0 if complete
         ${code_directory}/check_input_file.sh ${input_path}
         retn_code=$?
@@ -70,8 +92,14 @@ if flock 9; then   # Blocking wait
                 # Move to Workspace
                 echo "   Renaming file ${input_path} ${input_path_renamed}"
                 mv ${input_path} ${input_path_renamed}
-                new_file_to_process="yes"
-
+                retn_code=$?
+            
+                if [ ${retn_code} -eq 0 ]; then
+                    # File rename ok ... use file
+                    new_file_to_process="yes"
+                else
+                    echo "// File ${file_name} rename failed ... skipping operation"
+                fi
             else
                 echo "// File ${file_name} already exists in working dir ... skipping operation"
             fi
@@ -81,23 +109,29 @@ if flock 9; then   # Blocking wait
     else
         echo '// No file found ... skipping operation'
     fi
-else
-    echo '// Lock failed ... skipping operation'
-fi
-
-# Release the lock
-exec 9>&-
+#else
+#    echo '// Lock failed ... skipping operation'
+#fi
+#
+## Release the lock
+#exec 9>&-
 
 if [ $new_file_to_process == "yes" ]; then
     # Move renamed file to Workspace
     echo "   Moving to Workspace ${input_path_renamed} ${work_path}"
     mv ${input_path_renamed} ${work_path}
+    retn_code=$?
 
-    # File are now in the work dir ... ready to be processed
+    if [ ${retn_code} -eq 0 ]; then
+        # File are now in the work dir ... ready to be processed
 
-    # Run the job 
-    ${process_job} "${work_path}" "$@"
-    exit 0
+        # Run the job 
+        ${process_job} "${work_path}" "$@"
+        exit 0
+    else
+        echo "// File ${file_name} move failed ... skipping operation"
+        exit 1
+    fi
 else
     exit 1
 fi
