@@ -53,24 +53,36 @@ echo "// No input lock used"
         file_name=${input_path##*/}
         input_path_renamed=${input_path}.inmove
         work_path=${work_directory}/${file_name}
+	processed_directory=${work_directory}/__processed__
+        processed_path=${processed_directory}/${file_name}
 
         # Check if file is being updated
-        first_stat = "$(stat -c %y "$file_name")"
-        echo "first_stat: first_stat"
-        
+        first_stat="$(stat -c %y "$input_path")"
+        echo "first_stat: ${first_stat}"
+	first_lsl="$(ls -l "$input_path")"
+        echo "first_lsl: ${first_lsl}"
+
         sleep 1
-        second_stat = "$(stat -c %y "$file_name")"
-        echo "second_stat: second_stat"
-        if [ "$first_stat" != "$second_stat" ]; then
-            echo "// File ${file_name} failed stat check 1 ... skipping operation"
+        second_stat="$(stat -c %y "$input_path")"
+        echo "second_stat: ${second_stat}"
+        second_lsl="$(ls -l "$input_path")"
+        echo "second_lsl: ${second_lsl}"
+
+
+        if [ "${first_stat}" != "${second_stat}" ]; then
+            echo "// File ${input_path} failed stat check 1 ... skipping operation"
             exit 0
         fi
         
         sleep 1
-        third_stat = "$(stat -c %y "$file_name")"
-        echo "third_stat: third_stat"
-        if [ "$first_stat" != "$third_stat" ]; then
-            echo "// File ${file_name} failed stat check 2 ... skipping operation"
+        third_stat="$(stat -c %y "$input_path")"
+        echo "third_stat: ${third_stat}"
+        third_lsl="$(ls -l "$input_path")"
+        echo "third_lsl: ${third_lsl}"
+
+
+        if [ "${first_stat}" != "${third_stat}" ]; then
+            echo "// File ${input_path} failed stat check 2 ... skipping operation"
             exit 0
         fi
 
@@ -127,7 +139,12 @@ if [ $new_file_to_process == "yes" ]; then
 
         # Run the job 
         ${process_job} "${work_path}" "$@"
-        exit 0
+
+	# Move the input file to separate dir
+	mkdir -p $processed_directory
+	mv ${work_path} ${processed_path}
+
+	exit 0
     else
         echo "// File ${file_name} move failed ... skipping operation"
         exit 1
