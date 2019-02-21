@@ -33,100 +33,55 @@ lock_file="${input_directory}/dir_rw.lock"
 
 new_file_to_process="no"
 
-## Aquire lock
-#echo "// Aquire lock ${lock_file}"
-#exec 9>$lock_file
-#if flock 9; then   # Blocking wait
 echo "// No input lock used"
     
-    # Check if there are files to process
-    nfiles="$(find "${input_directory}" -name "${input_file_spec}" | wc -l)"
-    if [ "${nfiles}" -gt "0" ]; then
-        # Extract File Name in random pos
-        file_num=`shuf -i1-${nfiles} -n1`
-        input_path="$(find "${input_directory}" -name "${input_file_spec}" | head "-${file_num}" | tail -1)"
-        echo "// Found ${nfiles} Files"
-        echo "// Picking file_num ${file_num}"
-        echo "// File to process ${input_path}"
+# Check if there are files to process
+nfiles="$(find "${input_directory}" -name "${input_file_spec}" | wc -l)"
+if [ "${nfiles}" -gt "0" ]; then
+    # Extract File Name in random pos
+    file_num=`shuf -i1-${nfiles} -n1`
+    input_path="$(find "${input_directory}" -name "${input_file_spec}" | head "-${file_num}" | tail -1)"
+    echo "// Found ${nfiles} Files"
+    echo "// Picking file_num ${file_num}"
+    echo "// File to process ${input_path}"
 
-        # Construct Paths
-        file_name=${input_path##*/}
-        input_path_renamed=${input_path}.inmove
-        work_path=${work_directory}/${file_name}
-	processed_directory=${work_directory}/__processed__
-        processed_path=${processed_directory}/${file_name}
+    # Construct Paths
+    file_name=${input_path##*/}
+    input_path_renamed=${input_path}.inmove
+    work_path=${work_directory}/${file_name}
+    processed_directory=${work_directory}/__processed__
+    processed_path=${processed_directory}/${file_name}
 
-        # Check if file is being updated
-        first_stat="$(stat -c %y "$input_path")"
-        echo "first_stat: ${first_stat}"
-	first_lsl="$(ls -l "$input_path")"
-        echo "first_lsl: ${first_lsl}"
+    # Rename file in input folder and check if successful
+    echo "   Renaming file ${input_path} ${input_path_renamed}"
+    mv ${input_path} ${input_path_renamed}
+    retn_code=$?
+    if [ ${retn_code} -eq 0 ]; then
+        # File rename ok ... use file
+        new_file_to_process="yes"
 
-        sleep 1
-        second_stat="$(stat -c %y "$input_path")"
-        echo "second_stat: ${second_stat}"
-        second_lsl="$(ls -l "$input_path")"
-        echo "second_lsl: ${second_lsl}"
-
-
-        if [ "${first_stat}" != "${second_stat}" ]; then
-            echo "// File ${input_path} failed stat check 1 ... skipping operation"
-            exit 0
-        fi
-        
-        sleep 1
-        third_stat="$(stat -c %y "$input_path")"
-        echo "third_stat: ${third_stat}"
-        third_lsl="$(ls -l "$input_path")"
-        echo "third_lsl: ${third_lsl}"
-
-
-        if [ "${first_stat}" != "${third_stat}" ]; then
-            echo "// File ${input_path} failed stat check 2 ... skipping operation"
-            exit 0
-        fi
-
-        
         # Call script to check if file is complete - exit 0 if complete
-        ${code_directory}/check_input_file.sh ${input_path}
+        ${code_directory}/check_input_file.sh ${input_path_renamed}
         retn_code=$?
-    
         if [ ${retn_code} -eq 0 ]; then
-            # File is ok ... use file
-
-            # Check if file already there
-            #ls -l ${input_directory}
-            #ls -l ${work_directory}
+            # Check if file already in work directory
             found_existing="$(find "${work_directory}" -name "${file_name}" | wc -l)"
-            #echo $found_existing
-            if [ "${found_existing}" -eq "0" ]; then
-
-                # Move to Workspace
-                echo "   Renaming file ${input_path} ${input_path_renamed}"
-                mv ${input_path} ${input_path_renamed}
-                retn_code=$?
-            
-                if [ ${retn_code} -eq 0 ]; then
-                    # File rename ok ... use file
-                    new_file_to_process="yes"
-                else
-                    echo "// File ${file_name} rename failed ... skipping operation"
-                fi
-            else
+            if [ "${found_existing}" -ne "0" ]; then
+                new_file_to_process="no"
                 echo "// File ${file_name} already exists in working dir ... skipping operation"
             fi
         else
+            # File is corrupted - cannot use file
+            new_file_to_process="no"
             echo "// File ${file_name} failed check ... skipping operation"
         fi
     else
-        echo '// No file found ... skipping operation'
+        new_file_to_process="no"
+        echo "// File ${file_name} rename failed ... skipping operation"
     fi
-#else
-#    echo '// Lock failed ... skipping operation'
-#fi
-#
-## Release the lock
-#exec 9>&-
+else
+    echo '// No file found ... skipping operation'
+fi
 
 if [ $new_file_to_process == "yes" ]; then
     # Move renamed file to Workspace
