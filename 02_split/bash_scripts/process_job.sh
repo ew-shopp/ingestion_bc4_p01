@@ -45,7 +45,7 @@ echo "   Split file int work directory"
 split -l 800000 --additional-suffix=.csv ${work_path}  ${split_file_suffix}
 
 # Move the files to output
-${code_directory}/move_to_output.sh ${output_directory} ${extract_directory}/*
+${code_directory}/move_to_output.sh ${code_directory} ${output_directory} ${extract_directory}/*
 
 # Cleanup
 rm -rf $extract_directory

@@ -50,7 +50,7 @@ docker exec -i ${container_id} arangoimp --server.password --file ${file_name_ed
 docker exec ${container_id} rm ${file_name_edge}  &&
 
 # Move the files to output
-${code_directory}/move_to_output.sh ${output_directory} ${work_path_edge} &&
+${code_directory}/move_to_output.sh ${code_directory} ${output_directory} ${work_path_edge} &&
 
 sleep 5 &&
 

@@ -45,7 +45,7 @@ java -Xmx4g -jar ${transformation_full_path} \
 
 
 # Move the files to output
-${code_directory}/move_to_output.sh ${output_directory} ${work_path_transformed}
+${code_directory}/move_to_output.sh ${code_directory} ${output_directory} ${work_path_transformed}
 
 echo '   Done'
 

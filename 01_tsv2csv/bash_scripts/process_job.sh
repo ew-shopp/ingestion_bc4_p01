@@ -40,7 +40,7 @@ echo "   Converting TSV > CSV"
 tr '\t' , < ${work_path} > ${work_path_csv}
 
 # Move the files to output
-${code_directory}/move_to_output.sh ${output_directory} ${work_path_csv}
+${code_directory}/move_to_output.sh ${code_directory} ${output_directory} ${work_path_csv}
 
 echo '   Done'
 

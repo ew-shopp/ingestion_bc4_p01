@@ -1,10 +1,13 @@
 #!/bin/bash
-# arg1: output directory
-# arg2 ... : files to move
+# arg1: code directory
+# arg2: output directory
+# arg3 ... : files to move
 
-output_directory=${1}
+code_directory=${1}
+output_directory=${2}
 
-# Remove the first argument to make it easy to loop through files
+# Remove the two first argument to make it easy to loop through files
+shift
 shift
 
 echo "output_directory: ${output_directory}"

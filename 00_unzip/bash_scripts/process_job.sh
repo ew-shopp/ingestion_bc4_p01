@@ -40,7 +40,7 @@ echo "   Extracting without folder structure"
 unzip -j ${work_path} -d ${extract_directory}
 
 # Move the files to output
-${code_directory}/move_to_output.sh ${output_directory} ${extract_directory}/*
+${code_directory}/move_to_output.sh ${code_directory} ${output_directory} ${extract_directory}/*
 
 # Cleanup
 rm -rf $extract_directory

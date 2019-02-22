@@ -59,7 +59,7 @@ while [ -f $run_file_name ]; do
         # Append start date
         echo "${start_process}" >> ${common_log_file}
     	
-        cat ${log_path} >> ${common_log_file}
+        cat ${log_file} >> ${common_log_file}
         echo "-" >> ${common_log_file}
       
         # Append end date

@@ -47,7 +47,7 @@ node \
     -f ${work_path}
 
 # Move the files to output
-${code_directory}/move_to_output.sh ${output_directory} ${work_path_results}/${file_name_no_ext}*
+${code_directory}/move_to_output.sh ${code_directory} ${output_directory} ${work_path_results}/${file_name_no_ext}*
 
 echo '   Done'
 

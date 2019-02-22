@@ -51,7 +51,7 @@ docker exec -i ${container_id} arangoimp --server.password --file ${file_name_va
 docker exec ${container_id} rm ${file_name_value}  &&
 
 # Move the files to output
-${code_directory}/move_to_output.sh ${output_directory} ${work_path_value} &&
+${code_directory}/move_to_output.sh ${code_directory} ${output_directory} ${work_path_value} &&
 
 sleep 5 &&
 
