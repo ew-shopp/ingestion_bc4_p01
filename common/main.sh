@@ -36,7 +36,7 @@ mkdir -p $work_directory/run
 run_file_name=`mktemp -t -p ${work_directory}/run`
 
 # Make unique working directory
-unique_work_directory="${work_directory}/${HOSTNAME}"
+unique_work_directory="${work_directory}/HOST_${HOSTNAME}"
 mkdir -p $unique_work_directory
 
 trap gracefulshutdown SIGINT SIGTERM

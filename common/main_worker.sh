@@ -39,8 +39,40 @@ echo "Got filepattern: ${input_file_spec}"
 
 while [ -f $run_file_name ]; do
 
-    # Call script to find a file and process it 
-    "${code_directory}/fetch_one_and_process.sh" "${input_file_spec}" "${code_directory}/process_job.sh" "$@"
+
+    # Try to process a file
+    if [ "${LOG_JOBS}" -eq "1" ]; then
+        log_directory=${work_directory}/logs
+        mkdir -p $log_directory
+        log_file=${log_directory}/single_job.log
+        common_log_file=${log_directory}/common.log
+        
+	    start_process=$("${code_directory}/now_entry.sh 'Start time'")
+        # Call script to find a file and process it 
+        "${code_directory}/fetch_one_and_process.sh" "${input_file_spec}" "${code_directory}/process_job.sh" "$@" 2>&1 | tee ${log_file}
+	    end_process=$("${code_directory}/now_entry.sh 'End time'")
+
+    	# Append to common log file
+        # Append start date
+        echo "${start_process}" >> ${common_log_file}
+    	
+        cat ${log_path} >> ${common_log_file}
+        echo "-" >> ${common_log_file}
+      
+        # Append end date
+        echo "${end_process}" >> ${common_log_file}
+        
+    else
+        # Call script to find a file and process it 
+        "${code_directory}/fetch_one_and_process.sh" "${input_file_spec}" "${code_directory}/process_job.sh" "$@"
+    fi
+
+
+
+
+
+
+
     
     retn_code=$?
 
