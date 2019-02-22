@@ -54,15 +54,21 @@ if [ "${nfiles}" -gt "0" ]; then
 
     # Rename file in input folder and check if successful
     echo "   Renaming file ${input_path} ${input_path_renamed}"
+    ${code_directory}/now_entry.sh "Rename_infile_1 ${input_path}"
     mv ${input_path} ${input_path_renamed}
     retn_code=$?
+    ${code_directory}/now_entry.sh "Rename_infile_2 ${input_path}"
+    
     if [ ${retn_code} -eq 0 ]; then
         # File rename ok ... use file
         new_file_to_process="yes"
 
         # Call script to check if file is complete - exit 0 if complete
+        ${code_directory}/now_entry.sh "Check_infile_1 ${input_path_renamed}"
         ${code_directory}/check_input_file.sh ${input_path_renamed}
         retn_code=$?
+        ${code_directory}/now_entry.sh "Check_infile_2 ${input_path_renamed}"
+
         if [ ${retn_code} -eq 0 ]; then
             # Check if file already in work directory
             found_existing="$(find "${work_directory}" -name "${file_name}" | wc -l)"
@@ -86,8 +92,10 @@ fi
 if [ $new_file_to_process == "yes" ]; then
     # Move renamed file to Workspace
     echo "   Moving to Workspace ${input_path_renamed} ${work_path}"
+    ${code_directory}/now_entry.sh "Move_infile_1 ${input_path_renamed}"
     mv ${input_path_renamed} ${work_path}
     retn_code=$?
+    ${code_directory}/now_entry.sh "Move_infile_2 ${input_path_renamed}"
 
     if [ ${retn_code} -eq 0 ]; then
         # File are now in the work dir ... ready to be processed
@@ -97,7 +105,9 @@ if [ $new_file_to_process == "yes" ]; then
 
 	# Move the input file to separate dir
 	mkdir -p $processed_directory
+    ${code_directory}/now_entry.sh "Move_procfile_1 ${work_path}"
 	mv ${work_path} ${processed_path}
+    ${code_directory}/now_entry.sh "Move_procfile_2 ${work_path}"
 
 	exit 0
     else

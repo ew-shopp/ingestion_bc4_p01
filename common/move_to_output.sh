@@ -27,8 +27,10 @@ do
     to_file_path_renamed=${to_file_path}.outmove
     shift
     
+    ${code_directory}/now_entry.sh "Move_outfile_1 ${from_file_path}"
     echo "   Moving file ${from_file_path} to ${to_file_path_renamed}"
     mv ${from_file_path} ${to_file_path_renamed}
+    ${code_directory}/now_entry.sh "Move_outfile_2 ${from_file_path}"
     
 #    # Aquire lock
 #    exec 9>$output_lock_file
@@ -38,7 +40,9 @@ do
           
         # Rename file in output dir to assure complete operation before starting to consume
         echo "   Rename file in output dir ${to_file_path_renamed} ${to_file_path}"
+        ${code_directory}/now_entry.sh "Rename_outfile_1 ${to_file_path_renamed}"
         mv ${to_file_path_renamed} ${to_file_path}
+        ${code_directory}/now_entry.sh "Rename_outfile_2 ${to_file_path_renamed}"
 
 #    fi
 #    # Release the lock
