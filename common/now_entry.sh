@@ -7,5 +7,5 @@ info_string=${1}
 date_string=$(date '+%c, %s.%N')
 
 # Append date string to log file with info text
-echo "####DATE_ENTRY####, ${info_string}, ${date_string}"
+echo "####DATE_ENTRY####, ${date_string}, ${info_string}"
 

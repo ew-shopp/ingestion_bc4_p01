@@ -49,6 +49,8 @@ while [ -f $run_file_name ]; do
         
         start_process=$(${code_directory}/now_entry.sh 'Start time')
 
+	# Set option to pick exit code from the fetch_one....script if it fails
+	set -o pipefail
         # Call script to find a file and process it 
         "${code_directory}/fetch_one_and_process.sh" "${input_file_spec}" "${code_directory}/process_job.sh" "$@" 2>&1 | tee ${log_file}
 	retn_code=$?
