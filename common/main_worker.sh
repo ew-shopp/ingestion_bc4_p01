@@ -47,10 +47,13 @@ while [ -f $run_file_name ]; do
         log_file=${log_directory}/single_job.log
         common_log_file=${log_directory}/common.log
         
-	    start_process=$("${code_directory}/now_entry.sh 'Start time'")
+        start_process=$(${code_directory}/now_entry.sh 'Start time')
+
         # Call script to find a file and process it 
         "${code_directory}/fetch_one_and_process.sh" "${input_file_spec}" "${code_directory}/process_job.sh" "$@" 2>&1 | tee ${log_file}
-	    end_process=$("${code_directory}/now_entry.sh 'End time'")
+	retn_code=$?
+
+        end_process=$(${code_directory}/now_entry.sh 'End time')
 
     	# Append to common log file
         # Append start date
@@ -65,16 +68,9 @@ while [ -f $run_file_name ]; do
     else
         # Call script to find a file and process it 
         "${code_directory}/fetch_one_and_process.sh" "${input_file_spec}" "${code_directory}/process_job.sh" "$@"
+	retn_code=$?
     fi
 
-
-
-
-
-
-
-    
-    retn_code=$?
 
     if [ ${retn_code} -eq 0 ]; then
         # File processed ... try next  
